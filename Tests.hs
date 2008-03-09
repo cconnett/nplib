@@ -93,9 +93,9 @@ prop_doubleNegation prop = prop == (neg $ neg $ prop)
 e = (liftM head) $
     readElections "/home/chris/schoolwork/thesis/elections/u-3-5"
 
-showAllTrues x = putStr $ unlines $ map show2 $ snd $ solveA mode $ [toSAT x]
+showAllTrues x = putStr $ unlines $ map show2 $ snd $ solveA mode $ [conjoin $ toSAT x]
 freeTrues x = map fromProposition $ filter isPos $ snd $ solveA mode $ x
-reportIntermediateValues x = assignmentInterpretation (snd $ solveA mode $ [toSAT [x]]) x
+reportIntermediateValues x = assignmentInterpretation (snd $ solveA mode $ [conjoin $ toSAT [x]]) x
 
 --summarizeIRVElection :: [Proposition a] -> [Proposition a] -> Constraint a -> String
 summarizeIRVElection trueProps allTheProps ineq =
@@ -143,7 +143,7 @@ reconstructVotes tvd = [map vdCandidate $
                         filter (\vd -> vdVoter vd == v) $
                         filter isVoteDatum $
                         tvd | v <- voters]
-    where voters = [0..maximum (map vdVoter $ filter isVoteDatum tvd)]
+    where voters = [1..maximum (map vdVoter $ filter isVoteDatum tvd)]
 calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates | r <- [0..length candidates - 1]]
     where candidates = nub $ map vdCandidate $ filter isVoteDatum tvd
           isEliminated r c = not $ null $
@@ -157,15 +157,16 @@ prop_nestedInequalities (constraints' :: [Constraint Var]) =
     trace ("numSatisfiable: " ++ show numSatisfiable) $
           (--traceIt $
            solve ZChaff $
-           [embedConstraints (map show constraints) constraints $ \surrogates ->
-                Inequality ([(-1, surrogate) | surrogate <- surrogates], -numSatisfiable)])
+           embedConstraints (map show constraints) constraints $ \surrogates ->
+               [Inequality ([(-1, surrogate) | surrogate <- surrogates], -numSatisfiable)])
           && (--traceIt $
               not $
           (solve ZChaff $
-           [embedConstraints (map show constraints) constraints $ \surrogates ->
-                Inequality ([(-1, surrogate) | surrogate <- surrogates], -(numSatisfiable+1))]))
+           embedConstraints (map show constraints) constraints $ \surrogates ->
+               [Inequality ([(-1, surrogate) | surrogate <- surrogates], -(numSatisfiable+1))]))
                                 
 -- Test expressions
+{-
 sampleFormula = embedConstraint "sample" (trans (-10) $ Inequality ([(1, Merely 'a'),
                                               (1, Merely 'b'),
                                               (1, Merely 'c'),
@@ -184,10 +185,10 @@ sampleFormula = embedConstraint "sample" (trans (-10) $ Inequality ([(1, Merely 
                          Clause [Not $ Merely 'b',
                                        Merely 'd'],
                          Clause [t]]-}
-               
-reductionTest = embedConstraint "fake (a and b)" (Formula [Clause [Merely 'a'], Clause [Merely 'b']]) $ \fakeAandB -> Formula [Clause [Not $ fakeAandB],
-                                                                                                                               --Clause [Merely 'a'],
-                                                                                                                               Clause [Merely 'b']]
+  -}             
+reductionTest = embedConstraint "fake (a and b)" (Formula [Clause [Merely 'a'], Clause [Merely 'b']]) $ \fakeAandB -> [Formula [Clause [Not $ fakeAandB],
+                                                                                                                                --Clause [Merely 'a'],
+                                                                                                                                Clause [Merely 'b']]]
 
 getProblem = do
   x <- e

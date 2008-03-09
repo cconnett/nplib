@@ -146,14 +146,15 @@ scoringProtocolManipulation s target manipulators votes =
 
 beats candidates ballots
        a b r = embedConstraint (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
+               conjoin $
                points candidates [b] ballots [r] $ \bPoints ->
                points candidates [a] ballots [r] $ \aPoints ->
-               conjoin [Formula [Clause [Not $ Merely $ Eliminated r b]],
-                        Formula [Clause [Not $ Merely $ Eliminated r a]],
-                        trans (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r) $
+                       Formula [Clause [Not $ Merely $ Eliminated r b]] :
+                       Formula [Clause [Not $ Merely $ Eliminated r a]] :
+                       (trans (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r) $
                         --(\ineq -> unsafePerformIO (do {writeFile ("ineqDump"++show a ++ show b ++ show r) (show ineq); return ineq})) $
                               Inequality ([( 1, bPoint) | bPoint <- bPoints] ++
-                                          [(-1, aPoint) | aPoint <- aPoints], -1)]
+                                          [(-1, aPoint) | aPoint <- aPoints], -1))
 
 points candidates as vs rs = pluralizeEmbedding [point candidates a v r | a <- as, v <- vs, r <- rs]
 point candidates a v r = embedConstraint ("point " ++ show r ++ " " ++ show a ++ " " ++ show v) $
@@ -162,7 +163,6 @@ point candidates a v r = embedConstraint ("point " ++ show r ++ " " ++ show a ++
                          ([Formula [Clause [Merely $ PairwiseDatum v a b, Merely $ Eliminated r b]]
                            | b <- delete a candidates])
 
-type Embedding a = (Proposition (VoteDatum Int) -> Constraint (VoteDatum Int)) -> Constraint (VoteDatum Int)
 --allOthersEliminated :: [Candidate a] -> Int -> Candidate a -> Embedding a
 allOthersEliminated candidates
                     r c = embedConstraint ("all except " ++ show c ++ " eliminated in round " ++ show r)
@@ -269,12 +269,13 @@ irvManipulation s target manipulators votes =
 --    Formula [Clause [Merely $ Eliminated 2 (Candidate 1)]] :
 --    Formula [Clause [Merely $ Eliminated 2 (Candidate 3)]] :
     -- Every ballot must give a point to one candidate and only one candidate in each round.
-    conjoin ([points' candidates [v] [r] $ \pointCsVR -> Formula [Clause pointCsVR]
+    conjoin ([conjoin $ points' candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
               | v <- voterSet ++ manipulatorSet,
                 r <- [0..length candidates - 2]]) :
-    conjoin ([point' a v r $ \pointAVR ->
+    conjoin ([conjoin $
+              point' a v r $ \pointAVR ->
               point' b v r $ \pointBVR ->
-              Formula [Clause [Not $ pointAVR, Not $ pointBVR]]
+              [Formula [Clause [Not $ pointAVR, Not $ pointBVR]]]
               | v <- voterSet ++ manipulatorSet,
                 r <- [0..length candidates - 2],
                 a <- candidates,
@@ -289,17 +290,19 @@ irvManipulation s target manipulators votes =
     -- if one strictly beats the other, that candidate is protected
     -- from elimination.
 
-    [beats' a b r $ \aBeatsB ->
-         Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]
+    [conjoin $
+     beats' a b r $ \aBeatsB ->
+         [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
      | a <- candidates,
        b <- candidates, a /= b,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
     
     
-    [fullShouldBeEliminated candidates ballots r b $ \bShouldBeEliminated ->
+    [conjoin $
+     fullShouldBeEliminated candidates ballots r b $ \bShouldBeEliminated ->
      --Formula [Clause [Not bShouldBeEliminated,       Merely $ Eliminated (r+1) b],
      --         Clause [    bShouldBeEliminated, Not $ Merely $ Eliminated (r+1) b]]
-     equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) b)
+     [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) b)]
      --Formula [Clause []]
      | b <- candidates,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++

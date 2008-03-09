@@ -46,9 +46,9 @@ toDIMACS2 varMapF (Formula formula) =
 {-# NOINLINE zchaffA #-}
 zchaffA :: (Show a, Ord a) => Problem a -> Problem a -> (Bool, [Proposition a])
 zchaffA problem1 =
-  let (varMapF, dimacs) = toDIMACS $ toSAT (detrivialize problem1) in
+  let (varMapF, dimacs) = toDIMACS $ conjoin $ toSAT (detrivialize problem1) in
   let closure problem2 =
-          let dimacs = toDIMACS2 varMapF $ toSAT (detrivialize $ problem1 ++ problem2) in
+          let dimacs = toDIMACS2 varMapF $ conjoin $ toSAT (detrivialize $ problem1 ++ problem2) in
           unsafePerformIO $ do
             (tmpname, handle) <- openTempFile "/tmp/" "zchaff.cnf"
             hPutStr handle dimacs

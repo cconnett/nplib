@@ -16,4 +16,4 @@ varSet (Formula formula) = --trace "varSet called" $
              concatMap fromClause $ formula)
     in x --seq x (trace "varSet evaluated" x)
 varSet (Inequality ineq) = S.fromList $ map snd $ fst ineq
-varSubsets i@(Inequality ineq) = sortNub $ map auxVarSet $ filter isAux $ (allVars (toSAT [i]))
+varSubsets i@(Inequality ineq) = sortNub $ map auxVarSet $ filter isAux $ (allVars (conjoin $ toSAT [i]))

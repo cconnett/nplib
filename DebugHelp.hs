@@ -10,7 +10,7 @@ import Data.List
 import Solvers
 import ZChaffSolver
 
-allProps problem = allVars $ toSAT problem
+allProps problem = allVars $ conjoin $ toSAT problem
 
 assignmentInterpretation trueProps i@(Inequality ineq) =
     sort $
@@ -28,7 +28,7 @@ assignmentInterpretation trueProps i@(Inequality ineq) =
     varSubsets i
 highestBit varSet i@(Inequality ineq) =
     maximum $ map auxBitNo $ filter ((==varSet) . auxVarSet) $
-            filter isAux $ allVars (toSAT [i])
+            filter isAux $ allVars (conjoin $ toSAT [i])
 showBinaryNumWidth 0 num = ""
 showBinaryNumWidth width num =
     (if testBit num (width-1) then '1' else '0') : showBinaryNumWidth (width-1) num
@@ -42,7 +42,7 @@ floatingBits problem =
             (Formula (map (Clause . (:[])      ) (filter (not . isAux) trueProps)) :
              Formula (map (Clause . (:[]) . Not) (filter (not . isAux) falseProps)) :
              Formula [Clause [prop]] :
-             [toSAT problem])
+             [conjoin $ toSAT problem])
     in
     filter (\prop -> all (solve ZChaff) (map compound [prop, neg prop]))
            (filter isAux allTheProps) 

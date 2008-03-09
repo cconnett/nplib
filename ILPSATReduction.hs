@@ -13,9 +13,10 @@ import Utilities
 -- Conversion from ILP to SAT, ala Warners, Joost, "A Linear-Time
 -- Transformation of Linear Inequalities into Conjunctive Normal
 -- Form."  The resulting Constraint is a Formula.
-toSAT :: Show a => Problem a -> Constraint a
-toSAT p = conjoin $ map convert (zip [0..] p)
-    where convert (i, Formula formula) = Formula formula
+toSAT :: Show a => Problem a -> Problem a
+toSAT p = concatMap convert (zip [0..] p)
+    where convert (i, Formula formula) = [Formula formula]
+          convert (i, TopFormula formula) = [TopFormula formula]
           convert (i, Inequality inequality) = trans i (Inequality inequality)
 
 -- Conversion from SAT to ILP.  SAT is a special case of ILP, so the
@@ -39,9 +40,9 @@ clauseToInequality clause = Inequality $
      -1 + (length $ filter isNeg (fromClause clause)))
 
 -- Warners' [War98] primary function --- converts an ILP inequality to a SAT formula
-trans :: Show a => Int -> Constraint a -> Constraint a
+trans :: Show a => Int -> Constraint a -> Problem a
 trans ineqNumber (Inequality (coeffsAndProps, b)) =
-    conjoin [pushTL $ transLHS ineqNumber nonTrivialSummands,
+            [pushTL $ transLHS ineqNumber nonTrivialSummands,
              transRHS ineqNumber nonTrivialProps newB (sum $ map abs coeffs)]
     where newB = b - (sum $ filter (<0) $ coeffs)
           -- To account for negative coefficients, increase b by their
@@ -141,6 +142,3 @@ tMul ineqNumber aMax ai prop =
               propInverter = if ai < 0 then neg else id
               pTerm k propSet = Auxiliary ineqNumber "p" k propSet
               cTerm k propSet = Auxiliary ineqNumber "c" k propSet
-
-transAny (Formula formula) = Formula $ filter (not . null . fromClause) formula
---transAny (Inequality ineq) = trans (fromIntegral $ HT.hashString (show (Inequality ineq))) (Inequality ineq)

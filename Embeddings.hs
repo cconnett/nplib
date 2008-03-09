@@ -12,25 +12,29 @@ import qualified Data.HashTable as HT
 -- formula being embedded.  The resulting constraint will be a formula
 -- respecting all of the above.
 
-embedConstraint :: (Show a) =>
-                   String ->
-                   Constraint a ->
-                   (Proposition a -> Constraint a) ->
-                   Constraint a
-embedConstraint tag c surrogateExpr = embedConstraint' tag surrogateExpr (transAny c)
+type Embedding a = (Proposition a -> Problem a) -> Problem a
 
-embedConstraint' :: forall a. (Show a) => String -> (Proposition a -> Constraint a) -> Constraint a -> Constraint a
-embedConstraint' tag surrogateExpr formula@(Formula [Clause [p]]) = transAny (surrogateExpr p)
+embedConstraint :: (Show a) => String -> Constraint a -> Embedding a
+embedConstraint _ (Inequality ineq) _ = undefined
+embedConstraint tag c surrogateExpr = embedConstraint' tag surrogateExpr (cleanConstraint c)
+
+cleanConstraint (Formula formula) = Formula $ filter (not . null . fromClause) formula
+cleanConstraint (TopFormula formula) = TopFormula $ filter (not . null . fromClause) formula
+cleanConstraint (Inequality ineq) = Inequality ineq
+                                      
+embedConstraint' :: forall a. (Show a) => String -> (Proposition a -> Problem a) -> Constraint a -> Problem a
+embedConstraint' tag surrogateExpr formula@(Formula [Clause [p]]) = map cleanConstraint (surrogateExpr p)
+embedConstraint' tag surrogateExpr (TopFormula formula) = [TopFormula formula]
 embedConstraint' tag surrogateExpr (Formula formula) =
     let t = Surrogate (Formula formula) tag :: Proposition a
         equivalenceConstraint = conjoin ([Formula [(Clause $ neg t:(fromClause clause)) | clause <- formula],
-                                         Formula $ foldl ((\((Clause ts):rest) ->
-                                                               (++rest) . fromFormula .
+                                          Formula $ foldl ((\((Clause ts):rest) ->
+                                                               (++rest) . fromFormula . head .
                                                                (embedConstraint' "non-uniq"
-                                                                                 (\tx -> Formula [Clause (tx:ts)])) .
+                                                                                 (\tx -> [Formula [Clause (tx:ts)]])) .
                                                                negateClause) :: [Clause a] -> Clause a -> [Clause a])
                                                      [Clause [t]] formula] :: [Constraint a])
-    in conjoin [transAny $ surrogateExpr t, equivalenceConstraint]
+    in         map cleanConstraint (surrogateExpr t) ++ [equivalenceConstraint]
 
 pluralizeEmbedding fns multiSurrogateExpr = pluralizeEmbedding' fns [] multiSurrogateExpr
 pluralizeEmbedding' [] acc multiSurrogateExpr = multiSurrogateExpr acc
