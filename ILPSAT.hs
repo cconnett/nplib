@@ -29,6 +29,7 @@ texify vars = unlines $ map (\(str, i) -> "$" ++ show i ++ "=" ++ filter (/='"')
 -- Constrants are polymorphic with respect to variables to be solved for.
 data Constraint a = Formula ![Clause a]
                   | Inequality !([(Int, Proposition a)], Int)
+                  | TopFormula ![Clause a]
 --                     deriving (Show, Read, Eq, Ord)
                      deriving (Read, Eq, Ord)
 data Clause a = Clause ![Proposition a]
@@ -41,13 +42,8 @@ data Proposition a = Merely !a
 --                     deriving (Show, Read, Eq, Ord)
                      deriving (Read, Eq, Ord)
 
-pushTL = id                              
---pushTL = Formula . (map (TopClause . fromClause)) . fromFormula
-{-
-pushTL (Formula f) = unsafePerformIO $ do
-                       writeFile "tlDump" (show f)
-                       return (Formula [])
--}
+pushTL = TopFormula . fromFormula
+
 -- A problem in this module is a set of constraints, which can be
 -- mixed between SAT formula and ILP inequalities.
 type Problem a = [Constraint a]
@@ -73,14 +69,19 @@ isSurrogate (Surrogate _ _) = True
 isSurrogate _ = False
 
 fromClause (Clause c) = c
---fromClause (TopClause c) = c
 fromFormula (Formula f) = f
+fromFormula (TopFormula f) = f
 fromInequality (Inequality ineq) = ineq
 
 isFormula (Formula f) = True
 isFormula _ = False
+isTopFormula (TopFormula tf) = True
+isTopFormula _ = False
 isInequality (Inequality i) = True
 isInequality _ = False
+
+equivalent p1 p2 = Formula [Clause [Not p1, p2], Clause [p1, Not p2]]
+                 
 {-
 -- Show instances for Constraint and helper types
   -}
@@ -157,4 +158,3 @@ detrivialize' i@(Inequality (lhs, rhs))
     where it = (filter ((/=0).fst) lhs, rhs)
 detrivialize' f@(Formula clauses) = if null it then Nothing else Just (Formula it)
     where it = filter (not.null.fromClause) clauses
-

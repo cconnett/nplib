@@ -141,6 +141,3 @@ tMul ineqNumber aMax ai prop =
               propInverter = if ai < 0 then neg else id
               pTerm k propSet = Auxiliary ineqNumber "p" k propSet
               cTerm k propSet = Auxiliary ineqNumber "c" k propSet
-
-transAny (Formula formula) = Formula $ filter (not . null . fromClause) formula
---transAny (Inequality ineq) = trans (fromIntegral $ HT.hashString (show (Inequality ineq))) (Inequality ineq)

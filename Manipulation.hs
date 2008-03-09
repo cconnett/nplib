@@ -145,10 +145,10 @@ scoringProtocolManipulation s target manipulators votes =
      | enemy <- delete target candidates]
 
 beats candidates ballots
-       a b r = embedConstraint (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
+       a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
                points candidates [b] ballots [r] $ \bPoints ->
                points candidates [a] ballots [r] $ \aPoints ->
-               conjoin [Formula [Clause [Not $ Merely $ Eliminated r b]],
+                       [Formula [Clause [Not $ Merely $ Eliminated r b]],
                         Formula [Clause [Not $ Merely $ Eliminated r a]],
                         trans (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r) $
                         --(\ineq -> unsafePerformIO (do {writeFile ("ineqDump"++show a ++ show b ++ show r) (show ineq); return ineq})) $
@@ -269,12 +269,14 @@ irvManipulation s target manipulators votes =
 --    Formula [Clause [Merely $ Eliminated 2 (Candidate 1)]] :
 --    Formula [Clause [Merely $ Eliminated 2 (Candidate 3)]] :
     -- Every ballot must give a point to one candidate and only one candidate in each round.
-    conjoin ([points' candidates [v] [r] $ \pointCsVR -> Formula [Clause pointCsVR]
+    conjoin ([conjoin $
+              points' candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
               | v <- voterSet ++ manipulatorSet,
                 r <- [0..length candidates - 2]]) :
-    conjoin ([point' a v r $ \pointAVR ->
+    conjoin ([conjoin $
+              point' a v r $ \pointAVR ->
               point' b v r $ \pointBVR ->
-              Formula [Clause [Not $ pointAVR, Not $ pointBVR]]
+              [Formula [Clause [Not $ pointAVR, Not $ pointBVR]]]
               | v <- voterSet ++ manipulatorSet,
                 r <- [0..length candidates - 2],
                 a <- candidates,
@@ -289,49 +291,21 @@ irvManipulation s target manipulators votes =
     -- if one strictly beats the other, that candidate is protected
     -- from elimination.
 
-    [beats' a b r $ \aBeatsB ->
-         Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]
+    [conjoin $
+     beats' a b r $ \aBeatsB ->
+         [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
      | a <- candidates,
        b <- candidates, a /= b,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
     
     
-    [fullShouldBeEliminated candidates ballots r b $ \bShouldBeEliminated ->
-     --Formula [Clause [Not bShouldBeEliminated,       Merely $ Eliminated (r+1) b],
-     --         Clause [    bShouldBeEliminated, Not $ Merely $ Eliminated (r+1) b]]
-     equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) b)
-     --Formula [Clause []]
+    [conjoin $
+     fullShouldBeEliminated candidates ballots r b $ \bShouldBeEliminated ->
+         [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) b)]
+     --[Formula [Clause []]]
      | b <- candidates,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
-     --}
     []
-{-Second attempt at elimination logic.
-    -- Eliminate the candidate each round that does not defeat another
-    -- non-eliminated candidate.  We need to check if all others have
-    -- been eliminated as a safety measure: since we can eliminate
-    -- more than one candidate in a round, we can end up with one
-    -- candidate left before the last round --- this lone candidate
-    -- should survive to the end, but vacuously won't beat another
-    -- unbeaten candidate.
-    [embedConstraint (Formula $ --(Clause [Not $ Merely $ Eliminated r a]):
-                                [Clause [Merely $ Eliminated r b] | b <- delete a candidates]) $ \allOthersEliminated ->
-     embedConstraints [beats a b r | b <- delete a candidates] $ \a'sVictories ->
-     embedConstraint (Formula $ [Clause [Not allOthersEliminated],
-                                 Clause [Not aVictory | aVictory <- a'sVictories]]) $ \shouldBeEliminated ->
-     Formula [Clause [Not shouldBeEliminated,       Merely $ Eliminated (r+1) a],
-              Clause [    shouldBeEliminated, Not $ Merely $ Eliminated (r+1) a]]
-     | a <- candidates, r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]]
-    )
- -}
-{-First attempt at the elimination logic
-  Formula $ (Clause $ Merely (Eliminated (r+1) a) : allOthersEliminated : aBeatsSomeoneStillIn) : 
-                -- Also, don't let the solver eliminate a candidate
-                -- unless the candidate actually deserves to be
-                -- eliminated.
-                Clause [Not $ allOthersEliminated, Not $ Merely $ Eliminated (r+1) a] :
-                [Clause [Not victoryForA, Not $ Merely $ Eliminated (r+1) a]
-                     | victoryForA <- aBeatsSomeoneStillIn]
- -}
 
 possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> Int -> [Vote a] -> [Candidate a]
 possibleWinnersBySolver solver manipulationProblemEr manipulators election =
