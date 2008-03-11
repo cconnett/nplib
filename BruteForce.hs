@@ -8,6 +8,9 @@ import Manipulation
 import System
 import IO
 
+-- Runs combinatorial brute force manipulation algorithm to produce
+-- possible winners for a (rule, m) and elections in electionsFile.
+
 main = do
   args <- getArgs
   if length args /= 3
