@@ -9,6 +9,7 @@ import ILPSAT
 import ILPSATReduction
 import Utilities
 import Embeddings
+import Hash
 import Test.QuickCheck
 import qualified Data.Set as S
 import Solvers
@@ -18,10 +19,10 @@ import Debug.Trace
 import Foreign (unsafePerformIO)
     
 type MPR a = Candidate a -> Int -> [Vote a] -> Problem (VoteDatum a)
-instance (Num a, Show a, Ord a) => Read (MPR a)  where
+instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
-    --readsPrec _ "irv" = [(irvManipulation (\n -> 1:(repeat 0)), "")]
+    readsPrec _ "irv" = [(irvManipulation (\n -> 1:(repeat 0)), "")]
     readsPrec _ _ = error $ "Supported rules are\nplurality\nborda\nirv\n"
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
@@ -140,12 +141,13 @@ beats candidates ballots
                points candidates [a] ballots [r] $ \aPoints ->
                        (Formula [Clause [Not $ Merely $ Eliminated r b]] :
                         Formula [Clause [Not $ Merely $ Eliminated r a]] :
-                        (trans (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r) $
+                        (trans ineqNumber $
                          --(\ineq -> unsafePerformIO (do {writeFile ("ineqDump"++show a ++ show b ++ show r) (show ineq); return ineq})) $
                          Inequality ([( 1, bPoint) | bPoint <- bPoints] ++
                                      [(-1, aPoint) | aPoint <- aPoints], -1)) ++
                        [])
-
+    where --ineqNumber = (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r)
+          ineqNumber = fromIntegral $ hash (show a ++ show b ++ show r)
 points candidates as vs rs = pluralizeEmbedding [point candidates a v r | a <- as, v <- vs, r <- rs]
 point candidates a v r = embedConstraint ("point " ++ show r ++ " " ++ show a ++ " " ++ show v) $
                          conjoin $
