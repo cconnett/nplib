@@ -20,22 +20,19 @@ embedFormula tag f surrogateExpr = embedFormula' tag surrogateExpr (cleanFormula
 embedFormula' :: forall a. (Show a) => String -> (Proposition a -> Problem a) -> Constraint a -> Problem a
 embedFormula' tag surrogateExpr formula@(Formula [Clause [p]]) = map cleanFormula (surrogateExpr p)
 embedFormula' tag surrogateExpr (Formula formula) =
-    let t = Surrogate (Formula formula) tag :: Proposition a
-        equivalenceConstraint = conjoin ([Formula [(Clause $ neg t:(fromClause clause)) | clause <- formula],
-                                         Formula $ foldl ((\((Clause ts):rest) ->
-                                                               (++rest) . fromFormula . conjoin .
-                                                               (embedFormula' "non-uniq"
-                                                                                 (\tx -> [Formula [Clause (tx:ts)]])) .
-                                                               negateClause) :: [Clause a] -> Clause a -> [Clause a])
-                                                     [Clause [t]] formula] :: [Constraint a])
-    in equivalenceConstraint : (map cleanFormula $ surrogateExpr t)
+    let s = Surrogate (Formula formula) tag :: Proposition a
+        equivalenceConstraints = TopFormula [(Clause $ neg s:(fromClause clause)) | clause <- formula] :
+                                 (embedConstraints (map (const "non-uniq") formula) (map negateClause formula) $ \ss ->
+                                  [TopFormula [Clause $ ss ++ [s]]])
+    in equivalenceConstraints ++ (map cleanFormula $ surrogateExpr s)
 
-embedTopFormula tag tf surrogateExpr = [tf]
+embedTopFormula tag tf surrogateExpr = tf : surrogateExpr (Surrogate tf tag)
 -- For embedInequality, would need a ineqNumber for trans and a tag to
 -- embed.  Instead, just make the caller call trans with the
 -- ineqNumber and call embedProblem with a tag.
 embedInequality tag ineq surrogateExpr = undefined
 
+embedConstraint :: Show a => String -> Constraint a -> (Proposition a -> Problem a) -> Problem a
 embedConstraint tag c surrogateExpr =
     case c of
       (Formula f) -> embedFormula tag (Formula f) surrogateExpr
@@ -60,16 +57,12 @@ embedProblem tag problem surrogateExpr =
            [TopFormula (concatMap fromFormula tfs)] ++
            surrogateExpr othersProposition
            
-
 negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
-
-cleanFormula (Formula formula) = Formula $ filter (not . null . fromClause) formula
-cleanFormula (TopFormula formula) = TopFormula $ filter (not . null . fromClause) formula
                           
 pluralizeEmbedding fns multiSurrogateExpr = pluralizeEmbedding' fns [] multiSurrogateExpr
 pluralizeEmbedding' [] acc multiSurrogateExpr = multiSurrogateExpr acc
 pluralizeEmbedding' (fn:fns) acc multiSurrogateExpr = fn $ \a-> pluralizeEmbedding' fns (a:acc) multiSurrogateExpr
 
 -- Convenience functions operating on embeddings
-tautology embedding = embedding (\surrogate -> Formula [Clause [surrogate]])
-unsat embedding = embedding (\surrogate -> Formula [Clause [Not surrogate]])
+tautology embedding = embedding (\surrogate -> [Formula [Clause [surrogate]]])
+unsat embedding = embedding (\surrogate -> [Formula [Clause [Not surrogate]]])

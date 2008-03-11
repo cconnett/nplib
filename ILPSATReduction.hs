@@ -13,9 +13,10 @@ import Utilities
 -- Conversion from ILP to SAT, ala Warners, Joost, "A Linear-Time
 -- Transformation of Linear Inequalities into Conjunctive Normal
 -- Form."  The resulting Constraint is a Formula.
-toSAT :: Show a => Problem a -> Constraint a
-toSAT p = conjoin $ map convert (zip [0..] p)
-    where convert (i, Formula formula) = Formula formula
+toSAT :: Show a => Problem a -> Problem a
+toSAT p = concatMap convert (zip [0..] p)
+    where convert (i, Formula formula) = [Formula formula]
+          convert (i, TopFormula formula) = [TopFormula formula]
           convert (i, Inequality inequality) = trans i (Inequality inequality)
 
 -- Conversion from SAT to ILP.  SAT is a special case of ILP, so the
@@ -39,10 +40,14 @@ clauseToInequality clause = Inequality $
      -1 + (length $ filter isNeg (fromClause clause)))
 
 -- Warners' [War98] primary function --- converts an ILP inequality to a SAT formula
-trans :: Show a => Int -> Constraint a -> Constraint a
-trans ineqNumber (Inequality (coeffsAndProps, b)) =
-    conjoin [pushTL $ transLHS ineqNumber nonTrivialSummands,
-             transRHS ineqNumber nonTrivialProps newB (sum $ map abs coeffs)]
+trans :: Show a => Int -> Constraint a -> Problem a
+trans ineqNumber it@(Inequality (coeffsAndProps, b)) =
+    --trace ("transing " ++ show it ++ " yields") $
+    --traceIt $
+            [pushTL $
+             transLHS ineqNumber nonTrivialSummands,
+             transRHS ineqNumber nonTrivialProps newB (sum $ map abs coeffs)
+            ]
     where newB = b - (sum $ filter (<0) $ coeffs)
           -- To account for negative coefficients, increase b by their
           -- absolute sum.  Trans-ing functions will emit (neg
@@ -72,13 +77,13 @@ transRHS ineqNumber varSet b coeffMagnitude =
     case b of
       b | b < 0 -> 
           -- unsatisfiable RHS: produce a trivially unsatisfiable Formula
-          Formula [Clause [Auxiliary (-1) "X" (-1) varSet], Clause [Not $ Auxiliary (-1) "X" (-1) varSet]]
+          Formula [Clause [Auxiliary (-1) "X" (-1) varSet], Clause [neg $ Auxiliary (-1) "X" (-1) varSet]]
       b | b > coeffMagnitude ->
           -- RHS is bigger than the LHS could ever be: trivially satisifiable
           Formula []
       otherwise ->
-          Formula $ map Clause [[Not $ Auxiliary ineqNumber "p" k varSet] ++
-                                [Not $ Auxiliary ineqNumber "p" j varSet | j <- all, testBit b j, j > k]
+          Formula $ map Clause [[neg $ Auxiliary ineqNumber "p" k varSet] ++
+                                [neg $ Auxiliary ineqNumber "p" j varSet | j <- all, testBit b j, j > k]
                                 | k <- all, not (testBit b k)]
     where --all = [0..m (max b coeffMagnitude) - 1]
           all = [0..m coeffMagnitude - 1]

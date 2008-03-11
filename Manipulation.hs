@@ -18,11 +18,11 @@ import Debug.Trace
 import Foreign (unsafePerformIO)
     
 type MPR a = Candidate a -> Int -> [Vote a] -> Problem (VoteDatum a)
---instance (Num a, Show a, Ord a) => Read (MPR a)  where
---    readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
---    readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
---    readsPrec _ "irv" = [(irvManipulation (\n -> 1:(repeat 0)), "")]
---    readsPrec _ _ = error $ "Supported rules are\nplurality\nborda\nirv\n"
+instance (Num a, Show a, Ord a) => Read (MPR a)  where
+    readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
+    readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
+    --readsPrec _ "irv" = [(irvManipulation (\n -> 1:(repeat 0)), "")]
+    readsPrec _ _ = error $ "Supported rules are\nplurality\nborda\nirv\n"
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
 findTwoWinners :: (Eq a) => Rule a -> Int -> [Vote a] -> [Candidate a]
@@ -148,12 +148,13 @@ beats candidates ballots
        a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
                points candidates [b] ballots [r] $ \bPoints ->
                points candidates [a] ballots [r] $ \aPoints ->
-                       [Formula [Clause [Not $ Merely $ Eliminated r b]],
-                        Formula [Clause [Not $ Merely $ Eliminated r a]],
-                        trans (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r) $
-                        --(\ineq -> unsafePerformIO (do {writeFile ("ineqDump"++show a ++ show b ++ show r) (show ineq); return ineq})) $
-                              Inequality ([( 1, bPoint) | bPoint <- bPoints] ++
-                                          [(-1, aPoint) | aPoint <- aPoints], -1)]
+                       (Formula [Clause [Not $ Merely $ Eliminated r b]] :
+                        Formula [Clause [Not $ Merely $ Eliminated r a]] :
+                        (trans (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r) $
+                         --(\ineq -> unsafePerformIO (do {writeFile ("ineqDump"++show a ++ show b ++ show r) (show ineq); return ineq})) $
+                         Inequality ([( 1, bPoint) | bPoint <- bPoints] ++
+                                     [(-1, aPoint) | aPoint <- aPoints], -1)) ++
+                       [])
 
 points candidates as vs rs = pluralizeEmbedding [point candidates a v r | a <- as, v <- vs, r <- rs]
 point candidates a v r = embedConstraint ("point " ++ show r ++ " " ++ show a ++ " " ++ show v) $
@@ -162,14 +163,13 @@ point candidates a v r = embedConstraint ("point " ++ show r ++ " " ++ show a ++
                          ([Formula [Clause [Merely $ PairwiseDatum v a b, Merely $ Eliminated r b]]
                            | b <- delete a candidates])
 
-type Embedding a = (Proposition (VoteDatum Int) -> Constraint (VoteDatum Int)) -> Constraint (VoteDatum Int)
 --allOthersEliminated :: [Candidate a] -> Int -> Candidate a -> Embedding a
 allOthersEliminated candidates
                     r c = embedConstraint ("all except " ++ show c ++ " eliminated in round " ++ show r)
                           (Formula [Clause [(if a == c then Not else id) $ Merely $ Eliminated r a] | a <- candidates])
                          
 victories candidates ballots
-          r c = (pluralizeEmbedding [beats candidates ballots c a r | a <- candidates])
+          r c = (pluralizeEmbedding [beats candidates ballots c a r | a <- delete c candidates])
 
 --shouldBeEliminated :: Proposition (VoteDatum Int) -> [Proposition (VoteDatum Int)] -> Int -> Candidate Int -> Embedding (VoteDatum Int)
 shouldBeEliminated allOthersEliminated victories
@@ -182,7 +182,7 @@ fullShouldBeEliminated candidates ballots
                        r c lambda = allOthersEliminated candidates r c $ \aoe ->
                                     victories candidates ballots r c $ \vics ->
                                     shouldBeEliminated aoe vics r c lambda
-                         
+
 irvManipulation s target manipulators votes = 
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..manipulators]
@@ -247,40 +247,45 @@ irvManipulation s target manipulators votes =
     Formula [Clause [Not $ Merely (Eliminated round candidate),
                      Merely (Eliminated (round+1) candidate)]
              | round <- [1{-no one can be out in round 0-}..length candidates - 2{-|C|-1 is last round-}],
-             candidate <- candidates] :
+               candidate <- candidates] :
+
     -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
     
     Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated (length candidates - 1) c]
-            | c <- candidates ] :
+             | c <- candidates ] :
     {-
     Formula [Clause [Merely $ Eliminated 1 (Candidate 1)
                     ,Merely $ Eliminated 1 (Candidate 2)
                     ,Merely $ Eliminated 1 (Candidate 3)
                     ]] :
-    Formula [Clause [Not $ Merely $ Eliminated 1 (Candidate 3)]] : -}
-    --tautology (beats' (Candidate 3) (Candidate 1) 0) :
-    --tautology (fullShouldBeEliminated candidates ballots 0 (Candidate 1)) :
-    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 2)) :
-    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 3)) :
+     -}
+--    Formula [Clause [      Merely $ Eliminated 1 (Candidate 1)]] :
+--    Formula [Clause [Not $ Merely $ Eliminated 1 (Candidate 3)]] :
+--    Formula [Clause [      Merely $ Eliminated 2 (Candidate 1)]] :
+--    Formula [Clause [      Merely $ Eliminated 2 (Candidate 3)]] :
+    
+    --tautology (beats' (Candidate 3) (Candidate 1) 0) ++
+    --tautology (fullShouldBeEliminated candidates ballots 0 (Candidate 1)) ++
+    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 2)) ++
+    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 3)) ++
               
-    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 1)) :
-    --unsat     (fullShouldBeEliminated candidates ballots 1 (Candidate 2)) :
-    --tautology (fullShouldBeEliminated candidates ballots 1 (Candidate 3)) :
---    Formula [Clause [Merely $ Eliminated 2 (Candidate 1)]] :
---    Formula [Clause [Merely $ Eliminated 2 (Candidate 3)]] :
-    -- Every ballot must give a point to one candidate and only one candidate in each round.
-    conjoin ([conjoin $
-              points' candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
+    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 1)) ++
+    --unsat     (fullShouldBeEliminated candidates ballots 1 (Candidate 2)) ++
+    --tautology (fullShouldBeEliminated candidates ballots 1 (Candidate 3)) ++
+
+-- Every ballot must give a point to one candidate and only one candidate in each round.
+
+    (concat [points' candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
               | v <- voterSet ++ manipulatorSet,
-                r <- [0..length candidates - 2]]) :
-    conjoin ([conjoin $
-              point' a v r $ \pointAVR ->
-              point' b v r $ \pointBVR ->
-              [Formula [Clause [Not $ pointAVR, Not $ pointBVR]]]
-              | v <- voterSet ++ manipulatorSet,
-                r <- [0..length candidates - 2],
-                a <- candidates,
-                b <- candidates, a < b]) :
+                r <- [0..length candidates - 2]]) ++
+    (concat [point' a v r $ \pointAVR ->
+             point' b v r $ \pointBVR ->
+             [Formula [Clause [Not $ pointAVR, Not $ pointBVR]]]
+             | v <- voterSet ++ manipulatorSet,
+               r <- [0..length candidates - 2],
+               a <- candidates,
+               b <- candidates, a < b]) ++
+
     -- Elimination: this is the heart of the formula.  This works on a
     -- two-way basis.  We protect candidates who strictly beat another
     -- non-eliminated candidate, and also force out all candidates who
@@ -291,20 +296,25 @@ irvManipulation s target manipulators votes =
     -- if one strictly beats the other, that candidate is protected
     -- from elimination.
 
-    [conjoin $
-     beats' a b r $ \aBeatsB ->
-         [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
+    concat
+    [beats' a b r $ \aBeatsB ->
+     [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
+     --[Formula [Clause [aBeatsB, neg aBeatsB]]]
+     --[]
      | a <- candidates,
        b <- candidates, a /= b,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
-    
-    
-    [conjoin $
-     fullShouldBeEliminated candidates ballots r b $ \bShouldBeEliminated ->
-         [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) b)]
-     --[Formula [Clause []]]
-     | b <- candidates,
+
+    concat
+    [allOthersEliminated candidates r c $ \aoe ->
+     victories candidates ballots r c $ \vics ->
+     shouldBeEliminated aoe vics r c $ \bShouldBeEliminated ->
+     [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) c)]
+     --[]
+     | c <- candidates,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
+--}
+ --fullShouldBeEliminated candidates ballots r b $ \bShouldBeEliminated ->
     []
 
 possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> Int -> [Vote a] -> [Candidate a]

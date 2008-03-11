@@ -25,5 +25,5 @@ Summarize: Summarize.hs Elections.hs Voting.hs
 Solve: Solve.hs Elections.hs ILPSAT.hs Manipulation.hs Voting.hs Solvers.hs
 	ghc ${FLAGS} --make Solve.hs -o Solve
 
-Tests: Tests.hs Elections.hs ILPSAT.hs ILPSATReduction.hs Manipulation.hs Voting.hs Solvers.hs DebugHelp.hs Embeddings.hs
+Tests: Tests.hs Elections.hs ILPSAT.hs ILPSATReduction.hs Manipulation.hs Voting.hs Solvers.hs DebugHelp.hs Embeddings.hs ZChaffSolver.hs VarMapping.hs
 	ghc ${FLAGS} --make Tests.hs -o Tests

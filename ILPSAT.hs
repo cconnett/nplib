@@ -70,7 +70,7 @@ isSurrogate _ = False
 
 fromClause (Clause c) = c
 fromFormula (Formula f) = f
-fromFormula (TopFormula f) = f
+fromFormula (TopFormula f) = f --error "TopFormula extraction"
 fromInequality (Inequality ineq) = ineq
 
 isFormula (Formula f) = True
@@ -87,7 +87,8 @@ equivalent p1 p2 = Formula [Clause [Not p1, p2], Clause [p1, Not p2]]
   -}
 -- {-
 instance (Show a) => Show (Constraint a) where
-    show (Formula f) = "Formula{" ++ (concat $ intersperse " ^ " $ map show f) ++ "}"
+    show (Formula f) = "\nFormula{\n" ++ (concat $ intersperse " ^ \n" $ map show f) ++ "}"
+    show (TopFormula f) = "\nTopFormula{\n" ++ (concat $ intersperse " ^ \n" $ map show f) ++ "}"
     show (Inequality (coeffsAndVars, b)) = "Ineq{" ++ (lhs ++ " <= " ++ rhs) ++ "}"
         where lhs = concat $ intersperse " + " $
                     (map (\(c, v) -> (show c ++ "*" ++ show v)) coeffsAndVars)
@@ -101,6 +102,7 @@ instance (Show a) => Show (Proposition a) where
 -- -}
 show2 (Merely a) = show a
 show2 (Not p) = '-':(show p)
+show2 (Surrogate f "non-uniq") = "<" ++ filter (/='\n') (show f) ++ ">"
 show2 (Surrogate f tag) = "<" ++ tag ++ ">"
 show2 (Auxiliary ineqNo label bitNo varSet) =
     "Aux (" ++ show ineqNo ++ ", " ++ label ++ ", " ++ show bitNo ++ ", " ++ show varSet ++ ")"
@@ -115,6 +117,7 @@ propApply f (Merely v) = Merely (f v)
 -- Var is a nice restricted version of Char that is convenient to use
 -- in Arbitrary Constraints.
 newtype Var = Var Char
+--    deriving (Show, Read, Eq, Ord)
     deriving (Eq, Ord)
 instance Show Var where showsPrec _ (Var c) s = c:s
 instance Read Var where readsPrec _ s = let [(c,s')] = (lex s) in [(Var (head c), s')]
@@ -149,12 +152,27 @@ instance (Arbitrary a) => Arbitrary (Proposition a) where
 multiConstraintProblem :: Gen (Problem Var)
 multiConstraintProblem = sized $ \n -> resize (round ((**0.6) $ fromIntegral n)) arbitrary
 
-conjoin formulas = Formula $ concatMap fromFormula formulas
+conjoin formulas
+    | any isTopFormula formulas = TopFormula clauses
+    | otherwise = Formula clauses
+    where clauses = concatMap fromFormula formulas
 
+
+                    
 detrivialize = catMaybes.(map detrivialize')
 detrivialize' i@(Inequality (lhs, rhs))
     | null (fst it) && rhs >= 0 = Nothing
-    | otherwise = Just (Inequality it)
+    | otherwise = Just (cleanInequality $ Inequality it)
     where it = (filter ((/=0).fst) lhs, rhs)
 detrivialize' f@(Formula clauses) = if null it then Nothing else Just (Formula it)
-    where it = filter (not.null.fromClause) clauses
+    where it = filter (not . null . fromClause) clauses
+detrivialize' tf@(TopFormula clauses) = if null it then Nothing else Just (TopFormula it)
+    where it = filter (not . null . fromClause) clauses
+
+cleanFormula (Formula formula) = Formula $ filter (not . null . fromClause) formula
+cleanFormula (TopFormula formula) = TopFormula $ filter (not . null . fromClause) formula
+cleanInequality (Inequality (summands, b)) =
+    Inequality $ (map (\(coeff, p) -> case (coeff, p) of
+                                        (coeff, p) | isNeg p -> (-coeff, neg p)
+                                        otherwise            -> (coeff, p))
+                  summands, b)

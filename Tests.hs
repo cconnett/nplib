@@ -42,12 +42,13 @@ prop_detrivializeEquivalence problem = solve BruteForce problem == solve BruteFo
 
 prop_trivialIneqs :: Constraint Var -> Property
 prop_trivialIneqs i@(Inequality (summands,b)) = b >= 0 ==> solve mode problem
-    where problem = detrivialize [i]
+    where problem = detrivialize [cleanInequality i]
 prop_trivialIneqs (Formula f) = False ==> False
 
 prop_assignmentWorks :: Constraint (Proposition Var) -> Property
 prop_assignmentWorks i@(Inequality (summands, b)) =
-    let (satisfiable, trueVars) = solveA mode [i] in
+    --let cleanI = Inequality (map (second normalizeProposition) summands, b) in
+    let (satisfiable, trueVars) = solveA mode [cleanInequality i] in
     satisfiable ==> (sum $ mapMaybe ((flip M.lookup) (M.fromList (map flop summands))) trueVars) <= b
 
 prop_assignmentWorks f@(Formula clauses) =
@@ -64,7 +65,8 @@ prop_noFloatingBits (problem::Problem Var) =
     let falseProps = (allProps problem) \\ trueProps in
     not (null $ trueProps ++ falseProps) ==>
     let fb = floatingBits problem in
-    (trace $ "floatingBits: " ++ show fb) $ null fb
+    --(trace $ "floatingBits: " ++ show fb) $
+    null fb
     {-
     not $ solve mode $ [(unsatisfiable $ embedConstraint "opposite" $ toSAT problem),
                         traceIt (Formula (map (Clause . (:[])      ) (filter (not . isAux) trueProps))),
@@ -85,17 +87,18 @@ prop_multipleConstraints = forAll multiConstraintProblem $ \p ->
     classify (bfResult == False) "UNSAT" $
     solve mode (p::[Constraint Var]) == bfResult
 
+{-
 prop_manipNumbers election = minimumManipulators (possibleWinnersByBruteForce (read "borda")) election ==
                              minimumManipulators (possibleWinnersBySolver GLPK (read "borda")) election
-
+-}
 prop_doubleNegation prop = prop == (neg $ neg $ prop)
 
 e = (liftM head) $
     readElections "/home/chris/schoolwork/thesis/elections/u-3-5"
 
-showAllTrues x = putStr $ unlines $ map show2 $ snd $ solveA mode $ [toSAT x]
+showAllTrues x = putStr $ unlines $ map show2 $ snd $ solveA mode $ [conjoin $ toSAT x]
 freeTrues x = map fromProposition $ filter isPos $ snd $ solveA mode $ x
-reportIntermediateValues x = assignmentInterpretation (snd $ solveA mode $ [toSAT [x]]) x
+reportIntermediateValues x = assignmentInterpretation (snd $ solveA mode $ [conjoin $ toSAT [x]]) x
 
 --summarizeIRVElection :: [Proposition a] -> [Proposition a] -> Constraint a -> String
 summarizeIRVElection trueProps allTheProps ineq =
@@ -157,15 +160,16 @@ prop_nestedInequalities (constraints' :: [Constraint Var]) =
     trace ("numSatisfiable: " ++ show numSatisfiable) $
           (--traceIt $
            solve ZChaff $
-           [embedConstraints (map show constraints) constraints $ \surrogates ->
-                Inequality ([(-1, surrogate) | surrogate <- surrogates], -numSatisfiable)])
+           embedConstraints (map show constraints) constraints $ \surrogates ->
+               [Inequality ([(-1, surrogate) | surrogate <- surrogates], -numSatisfiable)])
           && (--traceIt $
               not $
           (solve ZChaff $
-           [embedConstraints (map show constraints) constraints $ \surrogates ->
-                Inequality ([(-1, surrogate) | surrogate <- surrogates], -(numSatisfiable+1))]))
+           embedConstraints (map show constraints) constraints $ \surrogates ->
+               [Inequality ([(-1, surrogate) | surrogate <- surrogates], -(numSatisfiable+1))]))
                                 
 -- Test expressions
+{-
 sampleFormula = embedConstraint "sample" (trans (-10) $ Inequality ([(1, Merely 'a'),
                                               (1, Merely 'b'),
                                               (1, Merely 'c'),
@@ -184,14 +188,14 @@ sampleFormula = embedConstraint "sample" (trans (-10) $ Inequality ([(1, Merely 
                          Clause [Not $ Merely 'b',
                                        Merely 'd'],
                          Clause [t]]-}
-               
-reductionTest = embedConstraint "fake (a and b)" (Formula [Clause [Merely 'a'], Clause [Merely 'b']]) $ \fakeAandB -> Formula [Clause [Not $ fakeAandB],
-                                                                                                                               --Clause [Merely 'a'],
-                                                                                                                               Clause [Merely 'b']]
+  -}             
+reductionTest = embedConstraint "fake (a and b)" (Formula [Clause [Merely 'a'], Clause [Merely 'b']]) $ \fakeAandB -> [Formula [Clause [Not $ fakeAandB],
+                                                                                                                                --Clause [Merely 'a'],
+                                                                                                                                Clause [Merely 'b']]]
 
 getProblem = do
   x <- e
-  let problem = irvManipulation (\n -> [1,0,0,0,0,0]) (Candidate 2) 0 x
+  let problem = irvManipulation (\n -> [1,0,0,0,0,0]) (Candidate 3) 1 x
   return problem
 
 solveWithAdditional (partial, allTheProps) problem2 = do
@@ -213,12 +217,15 @@ getPartial = do
   ineqData <- readFile $ "ineqDump"++show (Candidate 3) ++ show (Candidate 1) ++ show 0
   let ineq = read ineqData :: Constraint (VoteDatum Int)
   let summary = summarizeIRVElection trueProps allTheProps ineq
-
-  return ((partial, allTheProps), summary)
+  if not sat then
+        return ((partial, allTheProps), "UNSAT")
+     else
+        return ((partial, allTheProps), summary)
 
 --partial <- setup
 main = do
   (p, s) <- getPartial
+  getProblem >>= (writeFile "theProblem") . show
   writeFile "problemSummary1" s
             
   {-
