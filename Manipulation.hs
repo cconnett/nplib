@@ -61,16 +61,6 @@ prop_FindFastInfinite target starting = it == Just starting || it == Just (targe
     where it = findFast (>target) [starting..]
 
 -- Support functions for brute force crack
-                       
--- nub with an upper limit
-nub' :: Eq a => Int -> [a] -> [a]
-nub' n list
-    | length currentSet == min (length list) n = currentSet
-    | otherwise = nub' n $ currentSet ++ (drop n list)
-    where currentSet = nub $ take n list
-
-prop_nub'_nub list = nub list == nub' (length list) list
-prop_nub'_subset list = length list >= 3 ==> S.fromList (nub' 3 list) `S.isSubsetOf` S.fromList list
 
 manipulatorVoteRankWeights :: Int -> Int -> [[Int]]
 manipulatorVoteRankWeights 0 slots = [replicate slots 0]
@@ -253,25 +243,6 @@ irvManipulation s target manipulators votes =
     
     Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated (length candidates - 1) c]
              | c <- candidates ] :
-    {-
-    Formula [Clause [Merely $ Eliminated 1 (Candidate 1)
-                    ,Merely $ Eliminated 1 (Candidate 2)
-                    ,Merely $ Eliminated 1 (Candidate 3)
-                    ]] :
-     -}
---    Formula [Clause [      Merely $ Eliminated 1 (Candidate 1)]] :
---    Formula [Clause [Not $ Merely $ Eliminated 1 (Candidate 3)]] :
---    Formula [Clause [      Merely $ Eliminated 2 (Candidate 1)]] :
---    Formula [Clause [      Merely $ Eliminated 2 (Candidate 3)]] :
-    
-    --tautology (beats' (Candidate 3) (Candidate 1) 0) ++
-    --tautology (fullShouldBeEliminated candidates ballots 0 (Candidate 1)) ++
-    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 2)) ++
-    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 3)) ++
-              
-    --unsat     (fullShouldBeEliminated candidates ballots 0 (Candidate 1)) ++
-    --unsat     (fullShouldBeEliminated candidates ballots 1 (Candidate 2)) ++
-    --tautology (fullShouldBeEliminated candidates ballots 1 (Candidate 3)) ++
 
 -- Every ballot must give a point to one candidate and only one candidate in each round.
 
@@ -299,8 +270,6 @@ irvManipulation s target manipulators votes =
     concat
     [beats' a b r $ \aBeatsB ->
      [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
-     --[Formula [Clause [aBeatsB, neg aBeatsB]]]
-     --[]
      | a <- candidates,
        b <- candidates, a /= b,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
@@ -310,12 +279,8 @@ irvManipulation s target manipulators votes =
      victories candidates ballots r c $ \vics ->
      shouldBeEliminated aoe vics r c $ \bShouldBeEliminated ->
      [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) c)]
-     --[]
      | c <- candidates,
-       r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
---}
- --fullShouldBeEliminated candidates ballots r b $ \bShouldBeEliminated ->
-    []
+       r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]]
 
 possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> Int -> [Vote a] -> [Candidate a]
 possibleWinnersBySolver solver manipulationProblemEr manipulators election =

@@ -1,13 +1,25 @@
 module Utilities where
 
+import Data.List
 import Control.Monad
 import Control.Parallel
 import qualified Data.Set as S
 import qualified Data.Map as M
 import Debug.Trace
+import Test.QuickCheck
 
 traceIt s = trace ("\nTRACEIT:" ++ show s) s
 
+-- nub with an upper limit
+nub' :: Eq a => Int -> [a] -> [a]
+nub' n list
+    | length currentSet == min (length list) n = currentSet
+    | otherwise = nub' n $ currentSet ++ (drop n list)
+    where currentSet = nub $ take n list
+
+prop_nub'_nub list = nub list == nub' (length list) list
+prop_nub'_subset list = length list >= 3 ==> S.fromList (nub' 3 list) `S.isSubsetOf` S.fromList list
+            
 -- Find the first item in the given search space that satisfies the
 -- predicate p, by unbounded binary search.  Search space may be
 -- infinite.  The predicate must be unsatisfiable up to some point in
@@ -57,4 +69,3 @@ mergeBy f (a:as) (b:bs)
     | otherwise = b:(mergeBy f (a:as) bs)
 
 sortNub = S.toList . S.fromList
-
