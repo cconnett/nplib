@@ -146,7 +146,7 @@ reconstructVotes tvd = [map vdCandidate $
                         filter (\vd -> vdVoter vd == v) $
                         filter isVoteDatum $
                         tvd | v <- voters]
-    where voters = [0..maximum (map vdVoter $ filter isVoteDatum tvd)]
+    where voters = [1..maximum (map vdVoter $ filter isVoteDatum tvd)]
 calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates | r <- [0..length candidates - 1]]
     where candidates = nub $ map vdCandidate $ filter isVoteDatum tvd
           isEliminated r c = not $ null $
