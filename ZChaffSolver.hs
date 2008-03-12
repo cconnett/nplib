@@ -42,7 +42,7 @@ zchaffA problem1 =
   let varMap1 = varMap $ fromFormula $ conjoin $ toSAT (detrivialize problem1) in
   let closure problem2 =
           let varMap2 = varMap $ fromFormula $ conjoin $ toSAT (detrivialize problem2)
-              varMapUnion = M.map (+ M.size varMap1) (varMap2 M.\\ varMap1)
+              varMapUnion = M.union varMap1 $ M.map (+ M.size varMap1) (varMap2 M.\\ varMap1)
               dimacs = toDIMACS varMapUnion $ conjoin $ toSAT (detrivialize $ problem1 ++ problem2)
           in
           unsafePerformIO $ do
