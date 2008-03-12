@@ -7,7 +7,8 @@ import ILPSAT
 import ILPSATReduction
 import Utilities
 
-varMap formula = M.fromAscList $ zip (allVars (Formula formula)) [1..]
+varMap formula = M.fromDistinctAscList $ zip (allVars (Formula formula)) [1..]
+
 allVars :: (Ord a, Eq a) => Constraint a -> [Proposition a]
 allVars = (S.toList) . varSet
 varSet :: (Ord a, Eq a) => Constraint a -> S.Set (Proposition a)
