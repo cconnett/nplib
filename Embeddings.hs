@@ -20,13 +20,13 @@ embedFormula tag f surrogateExpr = embedFormula' tag surrogateExpr (cleanFormula
 embedFormula' :: forall a. (Show a) => String -> (Proposition a -> Problem a) -> Constraint a -> Problem a
 embedFormula' tag surrogateExpr formula@(Formula [Clause [p]]) = map cleanFormula (surrogateExpr p)
 embedFormula' tag surrogateExpr (Formula formula) =
-    let s = Surrogate (Formula formula) tag :: Proposition a
+    let s = Surrogate tag (Formula formula) :: Proposition a
         equivalenceConstraints = TopFormula [(Clause $ neg s:(fromClause clause)) | clause <- formula] :
                                  (embedConstraints (map (const "non-uniq") formula) (map negateClause formula) $ \ss ->
                                   [TopFormula [Clause $ ss ++ [s]]])
     in equivalenceConstraints ++ (map cleanFormula $ surrogateExpr s)
 
-embedTopFormula tag tf surrogateExpr = tf : surrogateExpr (Surrogate tf tag)
+embedTopFormula tag tf surrogateExpr = tf : surrogateExpr (Surrogate tag tf)
 -- For embedInequality, would need a ineqNumber for trans and a tag to
 -- embed.  Instead, just make the caller call trans with the
 -- ineqNumber and call embedProblem with a tag.

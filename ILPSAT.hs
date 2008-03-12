@@ -37,7 +37,7 @@ data Clause a = Clause ![Proposition a]
                      deriving (Read, Eq, Ord)
 data Proposition a = Merely !a
                    | Not !(Proposition a)
-                   | Surrogate {sConstraint :: !(Constraint a), sTag :: !String}
+                   | Surrogate {sTag :: !String, sConstraint :: !(Constraint a)}
                    | Auxiliary {auxIneqNumber :: !Int, auxTag :: !String, auxBitNo :: !Int, auxVarSet :: ![Proposition a]}
 --                     deriving (Show, Read, Eq, Ord)
                      deriving (Read, Eq, Ord)
@@ -102,8 +102,8 @@ instance (Show a) => Show (Proposition a) where
 -- -}
 show2 (Merely a) = show a
 show2 (Not p) = '-':(show p)
-show2 (Surrogate f "non-uniq") = "<" ++ filter (/='\n') (show f) ++ ">"
-show2 (Surrogate f tag) = "<" ++ tag ++ ">"
+show2 (Surrogate "non-uniq" f) = "<" ++ filter (/='\n') (show f) ++ ">"
+show2 (Surrogate tag f) = "<" ++ tag ++ ">"
 show2 (Auxiliary ineqNo label bitNo varSet) =
     "Aux (" ++ show ineqNo ++ ", " ++ label ++ ", " ++ show bitNo ++ ", " ++ show varSet ++ ")"
 
