@@ -1,3 +1,5 @@
+{-# OPTIONS -fno-cse #-}
+
 module ZChaffSolver where
 
 import VarMapping
