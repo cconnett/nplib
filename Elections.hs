@@ -74,7 +74,4 @@ spatialVote issues stddev candidates = do
   return $ Vote $ sortBy (comparing (distance voter)) candidates
 
 readElections :: String -> IO [[Vote Int]]
-readElections filename = do
-  handle <- openFile filename ReadMode
-  electionsData <- hGetContents handle
-  return $ read electionsData
+readElections filename = liftM read $ readFile filename 
