@@ -18,7 +18,7 @@ import Debug.Trace
 
 import Foreign (unsafePerformIO)
     
-type MPR a = Candidate a -> Int -> [Vote a] -> Problem (VoteDatum a)
+type MPR a = Int -> [Vote a] -> (Problem (VoteDatum a), Candidate a -> Problem (VoteDatum a))
 instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
@@ -93,15 +93,15 @@ isElimination (Eliminated _ _) = True
 isElimination _ = False
              
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
-                               (k -> [k]) -> Candidate a -> Int -> [Vote a] ->
-                               Problem (VoteDatum a)
-scoringProtocolManipulation s target manipulators votes = 
+                               (k -> [k]) -> Int -> [Vote a] ->
+                               (Problem (VoteDatum a), Candidate a -> Problem (VoteDatum a))
+scoringProtocolManipulation s manipulators votes =
     let voterSet = [0..length votes - 1]
         manipulatorSet = [length votes .. length votes + manipulators - 1]
         candidates = extractCandidates votes
         positions = [0..length candidates - 1]
         scoreList = s (fromIntegral $ length candidates)
-    in
+    in (
     -- non-manipulators votes
     conjoin ([Formula $ Clause [Merely $ VoteDatum voter candidate correctPosition] :
                         [Clause [Not $ Merely $ VoteDatum voter candidate position]
@@ -118,6 +118,7 @@ scoringProtocolManipulation s target manipulators votes =
     Formula
     [Clause [Merely (VoteDatum manipulator c position) | position <- positions]
          | manipulator <- manipulatorSet, c <- candidates] :
+    [], \target ->
 
     -- NB: constraint holding that no candidate is in more than one
     -- position is implied by the previous two constraints
@@ -133,7 +134,7 @@ scoringProtocolManipulation s target manipulators votes =
                       | voter <- voterSet ++ manipulatorSet,
                         position <- positions],
                  -1)
-     | enemy <- delete target candidates]
+     | enemy <- delete target candidates])
 
 beats candidates ballots
        a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
@@ -175,7 +176,7 @@ fullShouldBeEliminated candidates ballots
                                     victories candidates ballots r c $ \vics ->
                                     shouldBeEliminated aoe vics r c lambda
 
-irvManipulation s target manipulators votes = 
+irvManipulation s manipulators votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..manipulators]
         ballots = voterSet ++ manipulatorSet
@@ -185,7 +186,7 @@ irvManipulation s target manipulators votes =
         beats' = beats candidates ballots
         point' = point candidates
         points' = points candidates
-    in
+    in (
     -- non-manipulators votes
     (conjoin
      [Formula $
@@ -240,14 +241,8 @@ irvManipulation s target manipulators votes =
                      Merely (Eliminated (round+1) candidate)]
              | round <- [1{-no one can be out in round 0-}..length candidates - 2{-|C|-1 is last round-}],
                candidate <- candidates] :
-
-    -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
     
-    Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated (length candidates - 1) c]
-             | c <- candidates ] :
-
--- Every ballot must give a point to one candidate and only one candidate in each round.
-
+    -- Every ballot must give a point to one candidate and only one candidate in each round.
     (concat [points' candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
               | v <- voterSet ++ manipulatorSet,
                 r <- [0..length candidates - 2]]) ++
@@ -283,11 +278,17 @@ irvManipulation s target manipulators votes =
      [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) c)]
      | c <- candidates,
        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]]
+    , \target ->
+    -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
+    [Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated (length candidates - 1) c]
+              | c <- candidates ]])
 
 possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> Int -> [Vote a] -> [Candidate a]
 possibleWinnersBySolver solver manipulationProblemEr manipulators election =
     trace (show manipulators) $
-    filter (\candidate -> solve solver $ manipulationProblemEr candidate manipulators election) candidates
+    let (partialProblem, restOfProblem) = manipulationProblemEr manipulators election
+        solveRest = startPartial solver partialProblem in
+    filter (\candidate -> (fst . solveRest) (restOfProblem candidate)) candidates
     where candidates = extractCandidates election
 
 minimumManipulators :: (Ord a) =>
