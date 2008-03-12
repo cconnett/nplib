@@ -39,11 +39,14 @@ toDIMACS' varMap clauses =
 {-# NOINLINE zchaffA #-}
 zchaffA :: (Show a, Ord a) => Problem a -> Problem a -> (Bool, [Proposition a])
 zchaffA problem1 =
-  let varMap1 = varMap $ fromFormula $ conjoin $ toSAT (detrivialize problem1) in
+  let formula1 = conjoin $ toSAT (detrivialize problem1)
+      varMap1 = varMap $ fromFormula formula1 in
   let closure problem2 =
-          let varMap2 = varMap $ fromFormula $ conjoin $ toSAT (detrivialize problem2)
-              varMapUnion = M.union varMap1 $ M.map (+ M.size varMap1) (varMap2 M.\\ varMap1)
-              dimacs = toDIMACS varMapUnion $ conjoin $ toSAT (detrivialize $ problem1 ++ problem2)
+          let formula2 = conjoin $ toSAT (detrivialize problem2)
+              varSet2 = varSet formula2
+              varMapUnion = M.union varMap1 $ M.fromDistinctAscList $
+                            zip (S.toList (varSet2 S.\\ (M.keysSet varMap1))) [M.size varMap1 + 1..]
+              dimacs = toDIMACS varMapUnion (conjoin [formula1, formula2])
           in
           unsafePerformIO $ do
             (tmpname, handle) <- openTempFile "/tmp/" "zchaff.cnf"
@@ -61,7 +64,7 @@ zchaffA problem1 =
             --getProcessExitCode zchaffProcess
             waitForProcess zchaffProcess
             --removeFile tmpname
-            return $ zchaffParse varMap1 readResult
+            return $ zchaffParse varMapUnion readResult
   in closure
 
 -- Parse the output of zchaff into answers about the formula.
