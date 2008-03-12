@@ -287,7 +287,7 @@ irvManipulation s target manipulators votes =
 possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> Int -> [Vote a] -> [Candidate a]
 possibleWinnersBySolver solver manipulationProblemEr manipulators election =
     --trace (show manipulators) $
-    (\candidate -> solver $ manipulationProblemEr candidate manipulators election) candidates
+    filter (\candidate -> solver $ manipulationProblemEr candidate manipulators election) candidates
     where candidates = extractCandidates election
 
 minimumManipulators :: (Ord a) =>
