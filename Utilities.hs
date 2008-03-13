@@ -46,7 +46,18 @@ prev s = s `div` 2
 hasIndex [] c = False
 hasIndex list 0 = True
 hasIndex list c = (tail list) `hasIndex` (c-1)
-                  
+
+prop_FindFastFinitePresent target list = any (>target) list ==>
+    ((fromJust $ findFast (>target) (sort list)) ==
+     (head $ dropWhile (<=target) (sort list)))
+
+prop_FindFastFiniteAbsent target list =
+    all (<=target) list ==> ((findFast (>target) (sort list)) == Nothing)
+
+prop_FindFastInfinite target starting = it == Just starting || it == Just (target + 1)
+    where it = findFast (>target) [starting..]
+
+               
 circularZip :: [[a]] -> [a]
 circularZip [] = []
 circularZip lists = concat [concatMap (take 1) lists,

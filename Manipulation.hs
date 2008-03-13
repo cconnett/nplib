@@ -51,16 +51,6 @@ possibleWinnersByBruteForce rule manipulators votes
 uniqueWinner [winner] = [winner]
 uniqueWinner group = []
 
-prop_FindFastFinitePresent target list = any (>target) list ==>
-    ((fromJust $ findFast (>target) (sort list)) ==
-     (head $ dropWhile (<=target) (sort list)))
-
-prop_FindFastFiniteAbsent target list =
-    all (<=target) list ==> ((findFast (>target) (sort list)) == Nothing)
-
-prop_FindFastInfinite target starting = it == Just starting || it == Just (target + 1)
-    where it = findFast (>target) [starting..]
-
 -- Support functions for brute force crack
 
 manipulatorVoteRankWeights :: Int -> Int -> [[Int]]
