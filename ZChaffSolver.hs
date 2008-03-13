@@ -44,8 +44,7 @@ zchaffA problem1 =
   let closure problem2 =
           let formula2 = conjoin $ toSAT (detrivialize problem2)
               varSet2 = varSet formula2
-              varMapUnion = M.union varMap1 $ M.fromDistinctAscList $
-                            zip (S.toList (varSet2 S.\\ (M.keysSet varMap1))) [M.size varMap1 + 1..]
+              varMapUnion = extendVarMap varMap1 (fromFormula formula2)
               dimacs = toDIMACS varMapUnion (conjoin [formula1, formula2])
           in
           unsafePerformIO $ do
