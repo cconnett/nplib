@@ -10,10 +10,10 @@ import Utilities
 varMap formula = M.fromDistinctAscList $ zip (allVars (Formula formula)) [1..]
 extendVarMap mp clauses = mkMap' mp (concatMap fromClause clauses)
 
-mkMap items = mkMap' (M.empty) items
+mkMap items = id $! mkMap' (M.empty) items
 mkMap' mp [] = mp
 mkMap' mp (item:items) = let nextIndex = M.size mp + 1 in
-                         mkMap' (M.insertWith (flip const) item nextIndex mp) items
+                         id $! mkMap' (M.insertWith (flip const) item nextIndex mp) items
 prop_mkMapAllKeys (items :: [Int]) =
     let mp = mkMap items in
     all (flip M.member mp) items
