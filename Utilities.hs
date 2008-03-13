@@ -1,5 +1,6 @@
 module Utilities where
 
+import Maybe
 import Data.List
 import Control.Monad
 import Control.Parallel
