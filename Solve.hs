@@ -22,14 +22,14 @@ main = do
   if length args /= 3
      then error "Solve method rule electionsFile"
      else do
-       let method = args !! 0
-           winnerCalculator = case method of
-                                "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
-                                "sat" -> possibleWinnersBySolver ZChaff (read (args !! 1))
-                                "ilp" -> possibleWinnersBySolver GLPK (read (args !! 1))
-                                _ -> error "Supported methods are \nbf\nsat\nilp"
-           electionsFilename = (args !! 2) :: String
+       let electionsFilename = (args !! 2) :: String
        elections <- readElections electionsFilename
+       let method = args !! 0
+           (winnerCalculator :: Int -> [Vote Int] -> [Candidate Int]) = case method of
+                                "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
+                                "sat" -> possibleWinnersBySolver ZChaff (read (args !! 1)) (head elections)
+                                --"ilp" -> possibleWinnersBySolver GLPK (read (args !! 1))
+                                _     -> error "Supported methods are \nbf\nsat"
        sequence $
           [do let theMinimumManipulators = minimumManipulators winnerCalculator election
               putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulators)

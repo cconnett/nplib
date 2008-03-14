@@ -16,6 +16,9 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import Foreign (unsafePerformIO)
 
+import Debug.Trace
+import Utilities
+    
 data ZChaff = ZChaff
 instance Solver ZChaff where
     startPartial s = zchaffA
@@ -23,28 +26,29 @@ instance Solver ZChaff where
 -- Conversion of Problem instances to DIMACS (CNF-SAT) formats.
 toDIMACS varMap (Formula clauses) = toDIMACS' varMap clauses
 toDIMACS varMap (TopFormula clauses) = toDIMACS' varMap clauses
-toDIMACS' varMap clauses =
-     unlines $ ("p cnf " ++ {-trace (show numVars)-} (show numVars) ++ " " ++ {-trace (show numClauses)-} (show numClauses)) :
-                 [unwords $ (map (show.transformProposition) $ fromClause clause) ++ ["0"]
-                      | clause <- clauses]
-        where transformProposition (Not p) = -(varMap M.! p)
+toDIMACS' varMap clauses = --trace (show clauses) $
+     [unwords $ (map (show.transformProposition) $ fromClause clause) ++ ["0"]
+          | clause <- clauses]
+        where transformProposition (Not p) = -(transformProposition p)
               transformProposition p = (varMap M.! p)
-              numVars = M.size varMap
-              numClauses = length clauses
 
 -- Runs a SAT constraint through zchaff and returns zchaff's answer
 -- regarding satisfiability, plus a list of the variables assigned a
 -- truth value of true.
 
 {-# NOINLINE zchaffA #-}
-zchaffA :: (Show a, Ord a) => Problem a -> Problem a -> (Bool, [Proposition a])
-zchaffA problem1 =
-  let formula1 = conjoin $ toSAT (detrivialize problem1)
-      varMap1 = id $! varMap $ fromFormula formula1 in
+zchaffA :: (Show a, Ord a) => ([String], VarMap a) -> Problem a -> (Bool, [Proposition a])
+zchaffA (cnf1, varMap1) =
   let closure problem2 =
           let formula2 = conjoin $ toSAT (detrivialize problem2)
-              varMapUnion = id $! extendVarMap varMap1 (fromFormula formula2)
-              dimacs = toDIMACS varMapUnion (conjoin [formula1, formula2])
+              varMapUnion = extendVarMap varMap1 (fromFormula formula2)
+              cnf2 = toDIMACS varMapUnion formula2
+              numVars = M.size varMapUnion
+              numClauses = length cnf1 + length cnf2
+              dimacs = unlines $
+                  ("p cnf " ++ trace (show numVars) (show numVars) ++ " " ++
+                               trace (show numClauses) (show numClauses)) :
+                  (cnf1 ++ cnf2)
           in
           unsafePerformIO $ do
             (tmpname, handle) <- openTempFile "/tmp/" "zchaff.cnf"

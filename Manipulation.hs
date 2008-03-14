@@ -10,12 +10,14 @@ import ILPSATReduction
 import Reductions
 import Utilities
 import Embeddings
+import VarMapping
 import Hash
 import Test.QuickCheck
 import qualified Data.Set as S
 import Solvers
 import Maybe
 import Debug.Trace
+import ZChaffSolver
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
 findTwoWinners :: (Eq a) => Rule a -> Int -> [Vote a] -> [Candidate a]
@@ -62,14 +64,22 @@ unrank objects rank = (take pos rest) ++ [head objects] ++ (drop pos rest)
 
 factorial n = product [2..n]
 
-possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> Int -> [Vote a] -> [Candidate a]
-possibleWinnersBySolver solver manipulationProblemEr manipulators election =
-    trace (show manipulators) $
-    let (partialProblem, restOfProblem) = manipulationProblemEr manipulators election
-        solveRest = startPartial solver partialProblem in
-    filter (\candidate -> (fst . solveRest) (restOfProblem candidate)) candidates
-    where candidates = extractCandidates election
-
+possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> [Vote a] ->
+                           (Int -> [Vote a] -> [Candidate a])
+possibleWinnersBySolver solver manipulationProblemEr election =
+    let numVotes = length election
+        candidates = extractCandidates election
+        cache = map ((\problem ->
+                          let clauses = fromFormula $ conjoin problem
+                              vm = varMap clauses in
+                          (toDIMACS vm (Formula clauses), vm)) .
+                     (\m -> fst $ manipulationProblemEr m election)) [0..] in
+    let realSolver manipulators votes =
+            trace (show manipulators) $
+            let part2 = snd $ manipulationProblemEr manipulators election
+                solveRest = startPartial solver (cache !! manipulators) in
+            filter (\target -> (fst . solveRest) (part2 election target)) candidates
+    in realSolver
 minimumManipulators :: (Ord a) =>
                        (Int -> [Vote a] -> [Candidate a]) -> [Vote a] -> [Int]
 minimumManipulators possibleWinners election =

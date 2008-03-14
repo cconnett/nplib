@@ -7,7 +7,9 @@ import Hash
 
 import Data.List
 
-type MPR a = Int -> [Vote a] -> (Problem (VoteDatum a), Candidate a -> Problem (VoteDatum a))
+import Utilities
+
+type MPR a = Int -> [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))
 instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
@@ -16,25 +18,25 @@ instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
                     
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
                                (k -> [k]) -> Int -> [Vote a] ->
-                               (Problem (VoteDatum a), Candidate a -> Problem (VoteDatum a))
+                               (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))
 scoringProtocolManipulation s manipulators votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..manipulators]
         candidates = extractCandidates votes
-        positions = [1..length candidates]
+        positions = [0..length candidates-1]
         scoreList = s (fromIntegral $ length candidates)
-    in (concat [nonManipulatorPositionalVotes votes voterSet candidates positions,
-                manipulatorPositionalPositionInjection manipulatorSet candidates positions,
+    in (concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
                 manipulatorPositionalPositionSurjection manipulatorSet candidates positions]
-       , \target ->
+       , \votes target ->
+        nonManipulatorPositionalVotes votes voterSet candidates positions ++
         -- Target wins. Since the reduction from ILP to SAT assumes
         -- the inequality is <=, points are bad: points for opponents
         -- are positive, and points for our target are negative.  The
         -- target wins if the total is <= -1.
-        [Inequality ([( fromIntegral (scoreList!!(position-1)), Merely $ VoteDatum voter opponent position)
+        [Inequality ([( fromIntegral (scoreList!!position), Merely $ VoteDatum voter opponent position)
                           | voter <- voterSet ++ manipulatorSet,
                             position <- positions] ++
-                     [(-fromIntegral (scoreList!!(position-1)), Merely $ VoteDatum voter target position)
+                     [(-fromIntegral (scoreList!!position), Merely $ VoteDatum voter target position)
                           | voter <- voterSet ++ manipulatorSet,
                             position <- positions],
                  -1)
@@ -52,7 +54,6 @@ irvManipulation manipulators votes =
     in (concat [--nonManipulatorPositionalVotes,
                 --manipulatorPositionalPositionSurjection,
                 --manipulatorPositionalPositionInjection,
-                nonManipulatorPairwiseVotes votes voterSet candidates,
                 manipulatorPairwiseBeatsASAR manipulatorSet candidates,
                 manipulatorPairwiseBeatsTotal manipulatorSet candidates] ++
         -- Everyone's in to start (all eliminations for round 0 are false)
@@ -97,7 +98,9 @@ irvManipulation manipulators votes =
              [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) c)]
          | c <- candidates,
            r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]]
-       , \target ->
+
+       , \votes target ->
+        nonManipulatorPairwiseVotes votes voterSet candidates ++
         -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
         [Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated (length candidates - 1) c]
              | c <- candidates ]])
