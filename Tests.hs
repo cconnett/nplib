@@ -111,11 +111,11 @@ summarizeIRVElection trueProps allTheProps ineq =
   let votes = reconstructVotes trueVoteData
   let survivors = calculateSurvivors trueVoteData
   let surrStatus = map (\s -> (s, "1")) $ sortBy (comparing sTag) $
-                   filter (not . (=~ "non-uniq") . sTag) $
+                   filter (not . (== "") . sTag) $
                    filter isSurrogate $
                    trueProps
   let surrStatusFalse  = map (\s -> (s, "0")) $ sortBy (comparing sTag) $
-                         filter (not . (=~ "non-uniq") . sTag) $
+                         filter (not . (== "") . sTag) $
                          filter isSurrogate $
                          falseProps
   let pointStatus = filter (("point " `isPrefixOf`) . sTag) $

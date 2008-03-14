@@ -22,7 +22,7 @@ embedFormula' tag surrogateExpr formula@(Formula [Clause [p]]) = map cleanFormul
 embedFormula' tag surrogateExpr (Formula formula) =
     let s = Surrogate tag (Formula formula) :: Proposition a
         equivalenceConstraints = TopFormula [(Clause $ neg s:(fromClause clause)) | clause <- formula] :
-                                 (embedConstraints (map (const "non-uniq") formula) (map negateClause formula) $ \ss ->
+                                 (embedConstraints (map (const "") formula) (map negateClause formula) $ \ss ->
                                   [TopFormula [Clause $ ss ++ [s]]])
     in equivalenceConstraints ++ (map cleanFormula $ surrogateExpr s)
 

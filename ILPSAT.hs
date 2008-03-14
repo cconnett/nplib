@@ -102,7 +102,7 @@ instance (Show a) => Show (Proposition a) where
 -- -}
 show2 (Merely a) = show a
 show2 (Not p) = '-':(show p)
-show2 (Surrogate "non-uniq" f) = "<" ++ filter (/='\n') (show f) ++ ">"
+show2 (Surrogate "" f) = "<" ++ filter (/='\n') (show f) ++ ">"
 show2 (Surrogate tag f) = "<" ++ tag ++ ">"
 show2 (Auxiliary ineqNo label bitNo varSet) =
     "Aux (" ++ show ineqNo ++ ", " ++ label ++ ", " ++ show bitNo ++ ", " ++ show varSet ++ ")"
