@@ -16,7 +16,7 @@ instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
     readsPrec _ "irv" = [(irvManipulation, "")]
     readsPrec _ _ = error $ "Supported rules are\nplurality\nborda\nveto\nirv\n"
-                    
+
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
                                (k -> [k]) -> Int -> [Vote a] ->
                                (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))

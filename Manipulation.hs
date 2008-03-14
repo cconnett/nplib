@@ -70,7 +70,7 @@ possibleWinnersBySolver solver manipulationProblemEr election =
     let numVotes = length election
         candidates = extractCandidates election
         cache = map ((\problem ->
-                          let clauses = fromFormula $ conjoin problem
+                          let clauses = sortNub $ fromFormula $ conjoin problem
                               vm = varMap clauses in
                           (toDIMACS vm (Formula clauses), vm)) .
                      (\m -> fst $ manipulationProblemEr m election)) [0..] in
