@@ -13,8 +13,9 @@ type MPR a = Int -> [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Candidate a 
 instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
+    readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
     readsPrec _ "irv" = [(irvManipulation, "")]
-    readsPrec _ _ = error $ "Supported rules are\nplurality\nborda\nirv\n"
+    readsPrec _ _ = error $ "Supported rules are\nplurality\nborda\nveto\nirv\n"
                     
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
                                (k -> [k]) -> Int -> [Vote a] ->

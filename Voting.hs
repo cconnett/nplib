@@ -27,6 +27,7 @@ instance (Eq a) => Read (Rule a) where
     readsPrec _ "plurality" = [(plurality, "")]
     readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoff, "")]
     readsPrec _ "borda" = [(borda, "")]
+    readsPrec _ "veto" = [(veto, "")]
     --readsPrec _ "bucklin" = [(bucklin, "")]
     readsPrec _ "copeland" = [(copeland, "")]
     readsPrec _ "maximin" = [(maximin, "")]
@@ -34,7 +35,7 @@ instance (Eq a) => Read (Rule a) where
                     (unlines rules)
 
 rules :: [String]
-rules = ["irv", "coombs", "plurality", "pluralityWithRunoff", "borda",
+rules = ["irv", "coombs", "plurality", "pluralityWithRunoff", "borda", "veto",
          --"bucklin",
          "copeland", "maximin"]
 
