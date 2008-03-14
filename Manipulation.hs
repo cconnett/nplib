@@ -78,7 +78,7 @@ possibleWinnersBySolver solver manipulationProblemEr election =
             trace (show manipulators) $
             let part2 = snd $ manipulationProblemEr manipulators election
                 solveRest = startPartial solver (cache !! manipulators) in
-            filter (\target -> (fst . solveRest) (part2 election target)) candidates
+            filter (\target -> (fst . solveRest) (part2 votes target)) candidates
     in realSolver
 minimumManipulators :: (Ord a) =>
                        (Int -> [Vote a] -> [Candidate a]) -> [Vote a] -> [Int]
