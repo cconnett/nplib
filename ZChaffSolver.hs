@@ -27,7 +27,7 @@ instance Solver ZChaff where
 toDIMACS varMap (Formula clauses) = toDIMACS' varMap clauses
 toDIMACS varMap (TopFormula clauses) = toDIMACS' varMap clauses
 toDIMACS' varMap clauses = --trace (show clauses) $
-     [unwords $ (map (show.transformProposition) $ fromClause clause) ++ ["0"]
+     [map transformProposition $ fromClause clause
           | clause <- clauses]
         where transformProposition (Not p) = -(transformProposition p)
               transformProposition p = (varMap M.! p)
@@ -37,7 +37,7 @@ toDIMACS' varMap clauses = --trace (show clauses) $
 -- truth value of true.
 
 {-# NOINLINE zchaffA #-}
-zchaffA :: (Show a, Ord a) => ([String], VarMap a) -> Problem a -> (Bool, [Proposition a])
+zchaffA :: (Show a, Ord a) => ([[Int]], VarMap a) -> Problem a -> (Bool, [Proposition a])
 zchaffA (cnf1, varMap1) =
   let closure problem2 =
           let formula2 = conjoin $ toSAT (detrivialize problem2)
@@ -48,7 +48,7 @@ zchaffA (cnf1, varMap1) =
               dimacs = unlines $
                   ("p cnf " ++ trace (show numVars) (show numVars) ++ " " ++
                                trace (show numClauses) (show numClauses)) :
-                  (cnf1 ++ cnf2)
+                  (map (unwords . (map show) . (++[0])) $ cnf1 ++ cnf2)
           in
           unsafePerformIO $ do
             (tmpname, handle) <- openTempFile "/tmp/" "zchaff.cnf"
