@@ -6,7 +6,7 @@ module Main
 import Manipulation
 import ILPSAT
 import ZChaffSolver
-import GLPKSolver
+--import GLPKSolver
 import System
 import Voting
 import Elections
@@ -25,7 +25,7 @@ main = do
        let electionsFilename = (args !! 2) :: String
        elections <- readElections electionsFilename
        let method = args !! 0
-           (winnerCalculator :: Int -> [Vote Int] -> [Candidate Int]) = case method of
+           winnerCalculator = case method of
                                 "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
                                 "sat" -> possibleWinnersBySolver ZChaff (read (args !! 1)) (head elections)
                                 --"ilp" -> possibleWinnersBySolver GLPK (read (args !! 1))
