@@ -7,15 +7,18 @@ import ILPSAT
 import ILPSATReduction
 import Utilities
 import Debug.Trace
+import Data.Int
 
-type VarMap a = M.Map (Proposition a) Int
+type VarMap a b = M.Map (Proposition a) b
 
+--varMap :: (Ord a, Integral b) => [Clause a] -> VarMap a b
+varMap :: (Ord a) => [Clause a] -> VarMap a Int32
 varMap formula = M.fromDistinctAscList $ zip (allVars (Formula formula)) [1..]
 extendVarMap mp clauses = mkMap' mp (map normalizeProposition $ concatMap fromClause clauses)
 
 mkMap items = mkMap' (M.empty) items
 mkMap' mp [] = mp
-mkMap' mp (item:items) = let nextIndex = M.size mp + 1 in
+mkMap' mp (item:items) = let nextIndex = fromIntegral $ M.size mp + 1 in
                          mkMap' (M.insertWith' (flip const) item nextIndex mp) items
 prop_mkMapAllKeys (items :: [Int]) =
     let mp = mkMap items in

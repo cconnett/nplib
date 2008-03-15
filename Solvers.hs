@@ -18,4 +18,5 @@ class Solver s where
     -- Compute support data structures for a large initial problem and
     -- return a closure that will take additional constraints and
     -- solve the combined problem.
-    startPartial :: (Show a, Ord a) => s -> ([[Int]], VarMap a) -> Problem a -> (Bool, [Proposition a])
+    startPartial :: (Show a, Ord a, Read b, Integral b) =>
+                    s -> ([[b]], VarMap a b) -> Problem a -> (Bool, [Proposition a])

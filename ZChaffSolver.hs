@@ -37,7 +37,8 @@ toDIMACS' varMap clauses = --trace (show clauses) $
 -- truth value of true.
 
 {-# NOINLINE zchaffA #-}
-zchaffA :: (Show a, Ord a) => ([[Int]], VarMap a) -> Problem a -> (Bool, [Proposition a])
+zchaffA :: (Show a, Ord a, Read b, Integral b) =>
+           ([[b]], VarMap a b) -> Problem a -> (Bool, [Proposition a])
 zchaffA (cnf1, varMap1) =
   let closure problem2 =
           let formula2 = conjoin $ toSAT (detrivialize problem2)
@@ -70,12 +71,12 @@ zchaffA (cnf1, varMap1) =
   in closure
 
 -- Parse the output of zchaff into answers about the formula.
-zchaffParse :: (Ord a) => M.Map (Proposition a) Int -> String -> (Bool, [Proposition a])
+zchaffParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Bool, [Proposition a])
 zchaffParse varMapF answer =
     let assignmentLine = (lines answer) !! 5
         answerLine = last $ lines answer
         assignmentStrings = words assignmentLine
-        assignments = map read (take (length assignmentStrings - 4) $ assignmentStrings) :: [Int]
+        assignments = map read (take (length assignmentStrings - 4) $ assignmentStrings)
         varMapR = M.fromList $ map (\(a,b)->(b,a)) $
                   M.toList $ varMapF
     in (not $ answer =~ "UNSAT",
