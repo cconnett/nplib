@@ -2,8 +2,10 @@ module Reductions where
 
 import Voting hiding (beats)
 import ILPSAT
+import ILPSATReduction
 import ReductionComponents
 import Hash
+import Embeddings
 
 import Data.List
 
@@ -12,10 +14,11 @@ import Utilities
 type MPR a = Int -> [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))
 instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
+    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
     readsPrec _ "irv" = [(irvManipulation, "")]
-    readsPrec _ _ = error $ "Supported rules are\nplurality\nborda\nveto\nirv\n"
+    readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\n"
 
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
                                (k -> [k]) -> Int -> [Vote a] ->
@@ -43,65 +46,79 @@ scoringProtocolManipulation s manipulators votes =
                  -1)
          | opponent <- delete target candidates])
 
+pluralityWithRunoffManipulation manipulators votes =
+    let voterSet = [1..length votes]
+        manipulatorSet = map (+length votes) [1..manipulators]
+        ballots = voterSet ++ manipulatorSet
+        candidates = extractCandidates votes
+        rounds = [0,1,2] in
+    let beats' = beats candidates ballots
+        point' = point candidates
+        points' = points candidates in
+    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
+             manipulatorPairwiseBeatsTotal manipulatorSet candidates,
+             eliminationBasics candidates rounds,
+             firstPlacePoints candidates ballots rounds] ++
+     -- Elimination: The candidates who advance are exactly those who
+     -- have at most 1 loss to another candidate.
+     concat
+     [losses candidates ballots 0 c $ \cLosses ->
+      let tag = (show c ++ " advances to round 1")
+          ineqNumber = fromIntegral $ hash tag in
+      embedProblem tag (trans ineqNumber $ Inequality ([(1, loss) | loss <- cLosses], 1)) $ \cAdvances ->
+      [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)]
+          | c <- candidates] ++
+     concat
+     [losses candidates ballots 1 c $ \cLosses ->
+      let tag = (show c ++ " advances to round 2")
+          ineqNumber = fromIntegral $ hash tag in
+      embedProblem tag (trans ineqNumber $ Inequality ([(1, loss) | loss <- cLosses], 0)) $ \cAdvances ->
+      [equivalent cAdvances (neg $ Merely $ Eliminated 2 c)]
+          | c <- candidates]
+     , \votes target ->
+        nonManipulatorPairwiseVotes votes voterSet candidates ++
+     -- Target candidate still remains in round 2, with everyone else eliminated, and therefore wins.
+        [Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated 2 c]
+                  | c <- candidates]])
+     
 irvManipulation manipulators votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..manipulators]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
-        positions = [0..length candidates - 1] in
+        positions = [0..length candidates - 1]
+        rounds = [0..length candidates - 1] in
     let beats' = beats candidates ballots
         point' = point candidates
-        points' = points candidates
-    in (concat [--nonManipulatorPositionalVotes,
-                --manipulatorPositionalPositionSurjection,
-                --manipulatorPositionalPositionInjection,
-                manipulatorPairwiseBeatsASAR manipulatorSet candidates,
-                manipulatorPairwiseBeatsTotal manipulatorSet candidates] ++
-        -- Everyone's in to start (all eliminations for round 0 are false)
-        [Formula [Clause [Not $ Merely (Eliminated 0 candidate)] | candidate <- candidates]] ++
-        -- Cascading elimination status
-        [Formula [Clause [Not $ Merely (Eliminated round candidate),
-                          Merely (Eliminated (round+1) candidate)]
-                  | round <- [1{-no one can be out in round 0-}..length candidates - 2{-|C|-1 is last round-}],
-                    candidate <- candidates]] ++
-        -- Every ballot must give a point to one candidate and only one candidate in each round.
-        (concat [points' candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
-                 | v <- voterSet ++ manipulatorSet,
-                   r <- [0..length candidates - 2]]) ++
-        (concat [point' a v r $ \pointAVR ->
-                 point' b v r $ \pointBVR ->
-                     [Formula [Clause [Not $ pointAVR, Not $ pointBVR]]]
-                 | v <- voterSet ++ manipulatorSet,
-                   r <- [0..length candidates - 2],
-                   a <- candidates,
-                   b <- candidates, a < b]) ++
+        points' = points candidates in
+    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
+             manipulatorPairwiseBeatsTotal manipulatorSet candidates,
+             eliminationBasics candidates rounds,
+             firstPlacePoints candidates ballots rounds] ++
+     -- Elimination: We protect candidates who strictly beat another
+     -- non-eliminated candidate, and also force out all candidates
+     -- who do not meet this criterion.  Both sides are needed to deny
+     -- the SAT solver any liberty in deciding who is eliminated (by
+     -- means other than selecting manipulator ballots).  For every
+     -- pair of distinct candidates in a given round where both are
+     -- still in, if one strictly beats the other, that candidate is
+     -- protected from elimination.
+     concat
+     [beats' a b r $ \aBeatsB ->
+          [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
+      | a <- candidates,
+        b <- candidates, a /= b,
+        r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
+     concat
+     [allOthersEliminated candidates r c $ \aoe ->
+      victories candidates ballots r c $ \vics ->
+      shouldBeEliminated aoe vics r c $ \bShouldBeEliminated ->
+      [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) c)]
+          | c <- candidates,
+            r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]]
 
-    -- Elimination: We protect candidates who strictly beat another
-    -- non-eliminated candidate, and also force out all candidates who
-    -- do not meet this criterion.  Both sides are needed to deny the
-    -- SAT solver any liberty in deciding who is eliminated (by means
-    -- other than selecting manipulator ballots).  For every pair of
-    -- distinct candidates in a given round where both are still in,
-    -- if one strictly beats the other, that candidate is protected
-    -- from elimination.
-
-        concat
-        [beats' a b r $ \aBeatsB ->
-             [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
-         | a <- candidates,
-           b <- candidates, a /= b,
-           r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
-
-        concat
-        [allOthersEliminated candidates r c $ \aoe ->
-         victories candidates ballots r c $ \vics ->
-         shouldBeEliminated aoe vics r c $ \bShouldBeEliminated ->
-             [equivalent bShouldBeEliminated (Merely $ Eliminated (r+1) c)]
-         | c <- candidates,
-           r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]]
-
-       , \votes target ->
+    , \votes target ->
         nonManipulatorPairwiseVotes votes voterSet candidates ++
-        -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
+     -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
         [Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated (length candidates - 1) c]
-             | c <- candidates ]])
+                  | c <- candidates ]])

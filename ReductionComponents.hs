@@ -71,6 +71,29 @@ manipulatorPairwiseBeatsTotal manipulatorSet candidates =
                 candidateB <- candidates,
                 candidateA < candidateB]]
 
+-- Basic constraints for voting rules using elimination.
+eliminationBasics candidates rounds =
+    -- Everyone's in to start (all eliminations for round 0 are false)
+    [Formula [Clause [Not $ Merely (Eliminated 0 candidate)] | candidate <- candidates]] ++
+    -- Cascading elimination status
+    [Formula [Clause [Not $ Merely (Eliminated  round    candidate),
+                            Merely (Eliminated (round+1) candidate)]
+              | round <- tail $ init $ rounds, -- No eliminations in the first or last rounds.
+                candidate <- candidates]]
+
+-- Every ballot must give a point to one candidate and only one candidate in each round.
+firstPlacePoints candidates ballots rounds =
+        (concat [points candidates candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
+                 | v <- ballots,
+                   r <- init rounds]) ++
+        (concat [point candidates a v r $ \pointAVR ->
+                 point candidates b v r $ \pointBVR ->
+                     [Formula [Clause [Not $ pointAVR, Not $ pointBVR]]]
+                 | v <- ballots,
+                   r <- init rounds,
+                   a <- candidates,
+                   b <- candidates, a < b])
+    
 -- IRV related embeddings
 beats candidates ballots
        a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
@@ -86,12 +109,12 @@ beats candidates ballots
     where --ineqNumber = (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r)
           ineqNumber = fromIntegral $ hash (show a ++ show b ++ show r)
 
-points candidates as vs rs = pluralizeEmbedding [point candidates a v r | a <- as, v <- vs, r <- rs]
-point candidates a v r = embedConstraint ("point " ++ show r ++ " " ++ show a ++ " " ++ show v) $
+points candidates cs vs rs = pluralizeEmbedding [point candidates c v r | c <- cs, v <- vs, r <- rs]
+point candidates c v r = embedConstraint ("point " ++ show r ++ " " ++ show c ++ " " ++ show v) $
                          conjoin $
-                         (Formula [Clause [Not $ Merely $ Eliminated r a]]) :
-                         ([Formula [Clause [Merely $ PairwiseDatum v a b, Merely $ Eliminated r b]]
-                           | b <- delete a candidates])
+                         (Formula [Clause [Not $ Merely $ Eliminated r c]]) :
+                         ([Formula [Clause [Merely $ PairwiseDatum v c d, Merely $ Eliminated r d]]
+                           | d <- delete c candidates])
 
 --allOthersEliminated :: [Candidate a] -> Int -> Candidate a -> Embedding a
 allOthersEliminated candidates
@@ -100,7 +123,9 @@ allOthersEliminated candidates
 
 victories candidates ballots
           r c = (pluralizeEmbedding [beats candidates ballots c a r | a <- delete c candidates])
-
+losses candidates ballots
+       r c = (pluralizeEmbedding [beats candidates ballots a c r | a <- delete c candidates])
+                
 --shouldBeEliminated :: Proposition (VoteDatum Int) -> [Proposition (VoteDatum Int)] -> Int -> Candidate Int -> Embedding (VoteDatum Int)
 shouldBeEliminated allOthersEliminated victories
                    r c = (embedConstraint (show c ++ " should be eliminated for round " ++ show (r+1))
