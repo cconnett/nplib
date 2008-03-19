@@ -126,7 +126,10 @@ allOthersEliminated candidates
 victories candidates ballots
           r c = (pluralizeEmbedding [beats candidates ballots c a r | a <- delete c candidates])
 losses candidates ballots
-       r c = (pluralizeEmbedding [beats candidates ballots a c r | a <- delete c candidates])
+       r c = (pluralizeEmbedding [embedProblem (show c ++ " loses to " ++ show a)
+                                               (beats candidates ballots a c r $ \aBeatsC ->
+                                                [Formula [Clause [Merely $ Eliminated r c, aBeatsC]]])
+                                      | a <- delete c candidates])
                 
 --shouldBeEliminated :: Proposition (VoteDatum Int) -> [Proposition (VoteDatum Int)] -> Int -> Candidate Int -> Embedding (VoteDatum Int)
 shouldBeEliminated allOthersEliminated victories

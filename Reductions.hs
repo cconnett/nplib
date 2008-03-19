@@ -52,8 +52,7 @@ pluralityWithRunoffManipulation manipulators votes =
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
         rounds = [0,1,2] in
-    let beats' = beats candidates ballots
-        point' = point candidates
+    let point' = point candidates
         points' = points candidates in
     (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates,
@@ -62,24 +61,26 @@ pluralityWithRunoffManipulation manipulators votes =
      -- Elimination: The candidates who advance are exactly those who
      -- have at most 1 loss to another candidate.
      concat
-     [losses candidates ballots 0 c $ \cLosses ->
-      let tag = (show c ++ " advances to round 1")
-          ineqNumber = fromIntegral $ hash tag in
-      embedProblem tag (trans ineqNumber $ Inequality ([(1, loss) | loss <- cLosses], 1)) $ \cAdvances ->
-      [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)]
-          | c <- candidates] ++
+     [let cAdvancesTag = (show c ++ " advances to round 1")
+          ineqNumber = fromIntegral $ hash cAdvancesTag in
+      losses candidates ballots 0 c $ \cLosses ->
+      embedProblem cAdvancesTag (trans ineqNumber $ Inequality ([(1, loss) | loss <- cLosses], 1)) $ \cAdvances ->
+       [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)] ++
+       []
+      | c <- candidates] ++
      concat
-     [losses candidates ballots 1 c $ \cLosses ->
-      let tag = (show c ++ " advances to round 2")
-          ineqNumber = fromIntegral $ hash tag in
-      embedProblem tag (trans ineqNumber $ Inequality ([(1, loss) | loss <- cLosses], 0)) $ \cAdvances ->
+     [let cAdvancesTag = (show c ++ " advances to round 2") in
+      losses candidates ballots 1 c $ \cLosses ->
+      let ineqNumber = fromIntegral $ hash cAdvancesTag in
+      embedFormula cAdvancesTag (Formula [Clause [neg loss] | loss <- cLosses]) $ \cAdvances ->
       [equivalent cAdvances (neg $ Merely $ Eliminated 2 c)]
           | c <- candidates]
      , \votes target ->
-        nonManipulatorPairwiseVotes votes voterSet candidates ++
+         nonManipulatorPairwiseVotes votes voterSet candidates ++
      -- Target candidate still remains in round 2, with everyone else eliminated, and therefore wins.
-        [Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated 2 c]
-                  | c <- candidates]])
+         [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 2 c]
+                   | c <- candidates]]
+    )
      
 irvManipulation manipulators votes =
     let voterSet = [1..length votes]
