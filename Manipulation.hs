@@ -80,6 +80,20 @@ possibleWinnersBySolver solver manipulationProblemEr election =
                 solveRest = startPartial solver (cache !! manipulators) in
             filter (\target -> (fst . solveRest) (part2 votes target)) candidates
     in realSolver
+possibleWinnersBySolverDebug solver manipulationProblemEr election =
+    let numVotes = length election
+        candidates = extractCandidates election
+        cache = map ((\problem ->
+                          let clauses = sortNub $ fromFormula $ conjoin problem
+                              vm = varMap clauses in
+                          (toDIMACS vm (Formula clauses), vm)) .
+                     (\m -> fst $ manipulationProblemEr m election)) [0..] in
+    let realSolver manipulators votes =
+            trace (show manipulators) $
+            let part2 = snd $ manipulationProblemEr manipulators election
+                solveRest = startPartial solver (cache !! manipulators)
+            in (\target -> solveRest (part2 votes target))
+    in realSolver
 minimumManipulators :: (Ord a) =>
                        (Int -> [Vote a] -> [Candidate a]) -> [Vote a] -> [Int]
 minimumManipulators possibleWinners election =

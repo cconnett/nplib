@@ -9,6 +9,8 @@ import ILPSAT
 import ILPSATReduction
 import Embeddings
 import Utilities
+import ReductionComponents
+import Reductions
 
 import Voting hiding (beats)
 import Elections
@@ -100,8 +102,7 @@ showAllTrues x = putStr $ unlines $ map show2 $ snd $ solveA mode $ [conjoin $ t
 freeTrues x = map fromProposition $ filter isPos $ snd $ solveA mode $ x
 reportIntermediateValues x = assignmentInterpretation (snd $ solveA mode $ [conjoin $ toSAT [x]]) x
 
---summarizeIRVElection :: [Proposition a] -> [Proposition a] -> Constraint a -> String
-summarizeIRVElection trueProps allTheProps ineq =
+summarizeElection trueProps allTheProps =
     let print = tell . (++"\n") . show
         putStrLn = tell . (++"\n") in execWriter $ do
   let falseProps = allTheProps \\ trueProps
@@ -133,22 +134,17 @@ summarizeIRVElection trueProps allTheProps ineq =
   putStrLn "Point info:"
   mapM_ print pointStatus
       
-  --Print all the unique ineqNumbers used in the reduction of this problem
-  --print $ sortNub $ map auxIneqNumber $ filter isAux $ trueProps ++ falseProps
-        
-  putStrLn ""
-  
-  let trueProps' = filter (\p -> isAux p && auxIneqNumber p == 1003001000) trueProps
-  mapM_ print trueProps'
-  mapM_ putStrLn $ map (\(a, b) -> b ++ " " ++ concat (intersperse "," a)) $ assignmentInterpretation trueProps' ineq
-reconstructVotes tvd = [map vdCandidate $
-                        sortBy (comparing vdPosition) $
-                        filter (\vd -> vdVoter vd == v) $
-                        filter isVoteDatum $
-                        tvd | v <- voters]
-    where voters = [1..maximum (map vdVoter $ filter isVoteDatum tvd)]
-calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates | r <- [0..length candidates - 1]]
-    where candidates = nub $ map vdCandidate $ filter isVoteDatum tvd
+reconstructVotes trueVoteData =
+    [let candidates = sortNub $ map pwCandidateA $ filter isPairwiseDatum $ trueVoteData
+         rankings = filter (\pwd -> pwVoter pwd == v) $
+                    filter isPairwiseDatum $
+                    trueVoteData
+     in sortBy (\c1 c2 -> if (PairwiseDatum v c1 c2) `elem` trueVoteData
+                          then LT else GT) candidates
+         | v <- voters]
+    where voters = [1..maximum (map pwVoter $ filter isPairwiseDatum trueVoteData)]
+calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates | r <- [0..2]]
+    where candidates = nub $ map pwCandidateA $ filter isPairwiseDatum tvd
           isEliminated r c = not $ null $
                              filter (\elimination -> eCandidate elimination == c && eRound elimination == r) $
                              filter isElimination tvd
@@ -168,67 +164,26 @@ prop_nestedInequalities (constraints' :: [Constraint Var]) =
            embedConstraints (map show constraints) constraints $ \surrogates ->
                [Inequality ([(-1, surrogate) | surrogate <- surrogates], -(numSatisfiable+1))]))
                                 
--- Test expressions
-{-
-sampleFormula = embedConstraint "sample" (trans (-10) $ Inequality ([(1, Merely 'a'),
-                                              (1, Merely 'b'),
-                                              (1, Merely 'c'),
-                                              (1, Merely 'd'),
-                                              (1, Merely 'e'),
-                                              (1, Merely 'f')], 3)) $ \t ->
-                embedConstraint "sample2" (Formula [Clause [Merely 'a'], Clause [Merely 'e'], Clause [Merely 'd'], Clause [Merely 'f']]) $ \fade ->
-                trans (-5) $ Inequality ([(-1, t), (-1, fade)], -1)
-                {-Formula [Clause [Not $ Merely $ 'b',
-                                 Not $ Merely $ 'c',
-                                       Merely $ 'd'],
-                         Clause [      Merely 'b'],
-                         Clause [Not $ Merely 'd',
-                                       ae,
-                                       Merely 'f'],
-                         Clause [Not $ Merely 'b',
-                                       Merely 'd'],
-                         Clause [t]]-}
-  -}             
-reductionTest = embedConstraint "fake (a and b)" (Formula [Clause [Merely 'a'], Clause [Merely 'b']]) $ \fakeAandB -> [Formula [Clause [Not $ fakeAandB],
-                                                                                                                                --Clause [Merely 'a'],
-                                                                                                                                Clause [Merely 'b']]]
+getSummary = do
+  election <- e
+  let solver = possibleWinnersBySolverDebug ZChaff pluralityWithRunoffManipulation election
+  let (sat, trueProps) = solver 0 election (Candidate 2)
 
-getProblem = do
-  x <- e
-  let problem = irvManipulation (\n -> [1,0,0,0,0,0]) (Candidate 3) 1 x
-  return problem
-
-solveWithAdditional (partial, allTheProps) problem2 = do
-    let (sat, trueProps) = partial problem2
-    ineqData <- readFile $ "ineqDump"++show (Candidate 3) ++ show (Candidate 1) ++ show 0
-    let ineq = read ineqData :: Constraint (VoteDatum Int)
-    if not sat then
+  let summary = summarizeElection trueProps []
+  if not sat then
         return "UNSAT"
      else
-        return $ summarizeIRVElection trueProps allTheProps ineq
+        return summary
 
-getPartial = do
-  problem <- getProblem
-  let partial = startPartial ZChaff problem
-  let (sat, trueProps) = partial []
-  let allTheProps = allProps problem
-
-  --let ineq = Inequality ([],0) :: Constraint (VoteDatum Int) --read ineqData :: Constraint (VoteDatum Int)
-  ineqData <- readFile $ "ineqDump"++show (Candidate 3) ++ show (Candidate 1) ++ show 0
-  let ineq = read ineqData :: Constraint (VoteDatum Int)
-  let summary = summarizeIRVElection trueProps allTheProps ineq
-  if not sat then
-        return ((partial, allTheProps), "UNSAT")
-     else
-        return ((partial, allTheProps), summary)
-
---partial <- setup
 main = do
-  (p, s) <- getPartial
-  getProblem >>= (writeFile "theProblem") . show
+  s <- getSummary
+  election <- e
+  let (p1, p2) = (pluralityWithRunoffManipulation 0 election)
+  let p = p1 ++ p2 election (Candidate 2)
+  writeFile "theProblem" (show p)
   writeFile "problemSummary1" s
             
-  {-
+{-
 main = do
   (problem, allTheProps, sat, trueProps, falseProps, trueVoteData) <- setup
   unless sat $ do {putStrLn "UNSAT"; exitWith (ExitFailure 1)}

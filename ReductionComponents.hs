@@ -17,6 +17,8 @@ data VoteDatum a = VoteDatum {vdVoter :: Int, vdCandidate :: Candidate a, vdPosi
     deriving (Show, Read, Eq, Ord)
 isVoteDatum (VoteDatum _ _ _) = True
 isVoteDatum _ = False
+isPairwiseDatum (PairwiseDatum _ _ _) = True
+isPairwiseDatum _ = False
 isElimination (Eliminated _ _) = True
 isElimination _ = False
     
