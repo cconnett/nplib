@@ -90,8 +90,9 @@ scaleFree = scoringProtocol (\n -> map (\i -> exp (-i)) [1..])
 pluralityWithRunoff :: (Eq a) => Rule a
 pluralityWithRunoff candidates votes =
     topGroupBy (firstPlaceVotes (map (`wrt`runoffCandidates) votes)) runoffCandidates
-    where runoffCandidates = let groupA: ~(groupB:rest) =
+    where runoffCandidates = let groupA : ~(groupB:rest) =
                                      groupBy (equating (firstPlaceVotes votes)) $
+                                     reverse $
                                      sortBy (comparing (firstPlaceVotes votes)) candidates
                              in if length groupA >= 2 then groupA else groupA++groupB
           --candidates = extractCandidates votes
