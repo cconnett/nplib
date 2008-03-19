@@ -6,7 +6,7 @@ import qualified Data.HashTable as HT
 import Data.List
 
 type Embedding a = (Proposition a -> Problem a) -> Problem a
-    
+
 -- Takes a surrogate expression and a formula to embed.  The surrogate
 -- expression is a function that takes a single proposition and gives
 -- a constraint expressed using that proposition.  The embedConstraint
@@ -65,4 +65,4 @@ pluralizeEmbedding' (fn:fns) acc multiSurrogateExpr = fn $ \a-> pluralizeEmbeddi
 
 -- Convenience functions operating on embeddings
 tautology embedding = embedding (\surrogate -> [Formula [Clause [surrogate]]])
-unsat embedding = embedding (\surrogate -> [Formula [Clause [Not surrogate]]])
+unsat embedding = embedding (\surrogate -> [Formula [Clause [neg surrogate]]])

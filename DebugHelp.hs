@@ -40,7 +40,7 @@ floatingBits problem =
         falseProps = allTheProps \\ trueProps
         compound prop = 
             (Formula (map (Clause . (:[])      ) (filter (not . isAux) trueProps)) :
-             Formula (map (Clause . (:[]) . Not) (filter (not . isAux) falseProps)) :
+             Formula (map (Clause . (:[]) . neg) (filter (not . isAux) falseProps)) :
              Formula [Clause [prop]] :
              [conjoin $ toSAT problem])
     in

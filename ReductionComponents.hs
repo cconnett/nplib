@@ -23,13 +23,13 @@ isElimination _ = False
 -- Non-manipulators' positional votes, directly encoded.
 nonManipulatorPositionalVotes votes voterSet candidates positions =
     [Formula $ Clause [Merely $ VoteDatum voter candidate correctPosition] :
-               [Clause [Not $ Merely $ VoteDatum voter candidate position]
+               [Clause [neg $ Merely $ VoteDatum voter candidate position]
                     | position <- positions, position /= correctPosition]
      | (voter, vote) <- zip voterSet votes,
        (candidate, correctPosition) <- zip (fromVote vote) positions]
 
 nonManipulatorPairwiseVotes votes voterSet candidates =
-    [Formula [Clause [(if Voting.beats vote candidateA candidateB then id else Not) $
+    [Formula [Clause [(if Voting.beats vote candidateA candidateB then id else neg) $
                       Merely $ PairwiseDatum voter candidateA candidateB]]
          | (voter, vote) <- zip voterSet votes,
            candidateA <- candidates,
@@ -39,7 +39,7 @@ nonManipulatorPairwiseVotes votes voterSet candidates =
 -- Manipulator vote constraints (no two candidates in same position).
 manipulatorPositionalPositionInjection manipulatorSet candidates positions =
     [Formula
-     [Clause [Not $ Merely (VoteDatum manipulator a position), Not $ Merely (VoteDatum manipulator b position)]
+     [Clause [neg $ Merely (VoteDatum manipulator a position), neg $ Merely (VoteDatum manipulator b position)]
           | manipulator <- manipulatorSet,
             a <- candidates, b <- candidates, a /= b,
             position <- positions]]
@@ -55,8 +55,8 @@ manipulatorPositionalPositionSurjection manipulatorSet candidates positions =
 
 -- Pairwise beat relationship is anti-symmetric and anti-reflexive
 manipulatorPairwiseBeatsASAR manipulatorSet candidates =
-    [Formula [Clause [Not $ Merely (PairwiseDatum voter candidateA candidateB),
-                      Not $ Merely (PairwiseDatum voter candidateB candidateA)]
+    [Formula [Clause [neg $ Merely (PairwiseDatum voter candidateA candidateB),
+                      neg $ Merely (PairwiseDatum voter candidateB candidateA)]
               | voter <- manipulatorSet,
                 candidateA <- candidates,
                 candidateB <- candidates,
@@ -74,21 +74,21 @@ manipulatorPairwiseBeatsTotal manipulatorSet candidates =
 -- Basic constraints for voting rules using elimination.
 eliminationBasics candidates rounds =
     -- Everyone's in to start (all eliminations for round 0 are false)
-    [Formula [Clause [Not $ Merely (Eliminated 0 candidate)] | candidate <- candidates]] ++
+    [Formula [Clause [neg $ Merely (Eliminated 0 candidate)] | candidate <- candidates]] ++
     -- Cascading elimination status
-    [Formula [Clause [Not $ Merely (Eliminated  round    candidate),
+    [Formula [Clause [neg $ Merely (Eliminated  round    candidate),
                             Merely (Eliminated (round+1) candidate)]
               | round <- tail $ init $ rounds, -- No eliminations in the first or last rounds.
                 candidate <- candidates]]
 
--- Every ballot must give a point to one candidate and only one candidate in each round.
+-- Every ballot must give a point to one candidate and only one candidate in all but the last round.
 firstPlacePoints candidates ballots rounds =
         (concat [points candidates candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
                  | v <- ballots,
                    r <- init rounds]) ++
         (concat [point candidates a v r $ \pointAVR ->
                  point candidates b v r $ \pointBVR ->
-                     [Formula [Clause [Not $ pointAVR, Not $ pointBVR]]]
+                     [Formula [Clause [neg $ pointAVR, neg $ pointBVR]]]
                  | v <- ballots,
                    r <- init rounds,
                    a <- candidates,
@@ -99,8 +99,8 @@ beats candidates ballots
        a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
                points candidates [b] ballots [r] $ \bPoints ->
                points candidates [a] ballots [r] $ \aPoints ->
-                       (Formula [Clause [Not $ Merely $ Eliminated r b]] :
-                        Formula [Clause [Not $ Merely $ Eliminated r a]] :
+                       (Formula [Clause [neg $ Merely $ Eliminated r b]] :
+                        Formula [Clause [neg $ Merely $ Eliminated r a]] :
                         (trans ineqNumber $
                          --(\ineq -> unsafePerformIO (do {writeFile ("ineqDump"++show a ++ show b ++ show r) (show ineq); return ineq})) $
                          Inequality ([( 1, bPoint) | bPoint <- bPoints] ++
@@ -112,14 +112,14 @@ beats candidates ballots
 points candidates cs vs rs = pluralizeEmbedding [point candidates c v r | c <- cs, v <- vs, r <- rs]
 point candidates c v r = embedConstraint ("point " ++ show r ++ " " ++ show c ++ " " ++ show v) $
                          conjoin $
-                         (Formula [Clause [Not $ Merely $ Eliminated r c]]) :
+                         (Formula [Clause [neg $ Merely $ Eliminated r c]]) :
                          ([Formula [Clause [Merely $ PairwiseDatum v c d, Merely $ Eliminated r d]]
                            | d <- delete c candidates])
 
 --allOthersEliminated :: [Candidate a] -> Int -> Candidate a -> Embedding a
 allOthersEliminated candidates
                     r c = embedConstraint ("all except " ++ show c ++ " eliminated in round " ++ show r)
-                          (Formula [Clause [(if a == c then Not else id) $ Merely $ Eliminated r a] | a <- candidates])
+                          (Formula [Clause [(if a == c then neg else id) $ Merely $ Eliminated r a] | a <- candidates])
 
 victories candidates ballots
           r c = (pluralizeEmbedding [beats candidates ballots c a r | a <- delete c candidates])

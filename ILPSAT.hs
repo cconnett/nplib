@@ -80,7 +80,7 @@ isTopFormula _ = False
 isInequality (Inequality i) = True
 isInequality _ = False
 
-equivalent p1 p2 = Formula [Clause [Not p1, p2], Clause [p1, Not p2]]
+equivalent p1 p2 = Formula [Clause [neg p1, p2], Clause [p1, neg p2]]
                  
 {-
 -- Show instances for Constraint and helper types

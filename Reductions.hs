@@ -105,7 +105,7 @@ irvManipulation manipulators votes =
      -- protected from elimination.
      concat
      [beats' a b r $ \aBeatsB ->
-          [Formula [Clause [Not aBeatsB, Not $ Merely $ Eliminated (r+1) a]]]
+          [Formula [Clause [neg aBeatsB, neg $ Merely $ Eliminated (r+1) a]]]
       | a <- candidates,
         b <- candidates, a /= b,
         r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]] ++
@@ -120,5 +120,5 @@ irvManipulation manipulators votes =
     , \votes target ->
         nonManipulatorPairwiseVotes votes voterSet candidates ++
      -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
-        [Formula [Clause [(if c == target then Not else id) $ Merely $ Eliminated (length candidates - 1) c]
+        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated (length candidates - 1) c]
                   | c <- candidates ]])
