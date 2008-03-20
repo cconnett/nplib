@@ -35,4 +35,3 @@ main = do
               putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulators)
               --putStrLn (show $ theMinimumManipulators !! 1)
            | (electionNo, election) <- zip [1..] elections]
-

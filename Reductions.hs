@@ -18,7 +18,8 @@ instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
     readsPrec _ "irv" = [(irvManipulation, "")]
-    readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\n"
+    readsPrec _ "copeland" = [(copelandManipulation, "")]
+    readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\ncopeland\n"
 
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
                                (k -> [k]) -> Int -> [Vote a] ->
@@ -81,7 +82,7 @@ pluralityWithRunoffManipulation manipulators votes =
          [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 2 c]
                    | c <- candidates]]
     )
-     
+
 irvManipulation manipulators votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..manipulators]
@@ -123,3 +124,15 @@ irvManipulation manipulators votes =
      -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
         [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated (length candidates - 1) c]
                   | c <- candidates ]])
+
+copelandManipulation manipulators votes =
+    let voterSet = [1..length votes]
+        manipulatorSet = map (+length votes) [1..manipulators]
+        ballots = voterSet ++ manipulatorSet
+        candidates = extractCandidates votes in
+    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
+             manipulatorPairwiseBeatsTotal manipulatorSet candidates]
+    , \votes target ->
+        nonManipulatorPairwiseVotes votes voterSet candidates ++
+        concat [copelandScoreBetter candidates ballots target d | d <- delete target candidates]
+    )

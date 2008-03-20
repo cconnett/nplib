@@ -142,3 +142,27 @@ fullShouldBeEliminated candidates ballots
                        r c lambda = allOthersEliminated candidates r c $ \aoe ->
                                     victories candidates ballots r c $ \vics ->
                                     shouldBeEliminated aoe vics r c lambda
+
+-- Copeland voting components
+pairwiseVictory ballots c d =
+    let tag = (show c ++ " defeats " ++ show d) in
+    embedProblem tag (trans (fromIntegral $ hash tag) $
+                      Inequality ([(-1, Merely $ PairwiseDatum v c d) | v <- ballots] ++
+                                  [( 1, Merely $ PairwiseDatum v d c) | v <- ballots], -1))
+pairwiseTie ballots c d =
+    embedProblem (show c ++ " ties " ++ show d) $
+    pairwiseVictory ballots c d $ \cBeatsD ->
+    pairwiseVictory ballots d c $ \dBeatsC ->
+    [Formula [Clause [neg cBeatsD], Clause [neg dBeatsC]]]
+
+copelandScoreBetter candidates ballots c d =
+    pluralizeEmbedding [pairwiseVictory ballots d e | e <- delete d candidates] $ \dVics ->
+    pluralizeEmbedding [pairwiseVictory ballots c e | e <- delete c candidates] $ \cVics ->
+    pluralizeEmbedding [pairwiseTie     ballots c e | e <- delete c candidates] $ \dTies ->
+    pluralizeEmbedding [pairwiseTie     ballots d e | e <- delete d candidates] $ \cTies ->
+    trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
+    Inequality ([( 2, dVic) | dVic <- dVics] ++
+                [(-2, cVic) | cVic <- cVics] ++
+                [( 1, dTie) | dTie <- dTies] ++
+                [(-1, cTie) | cTie <- cTies],
+                 -1)

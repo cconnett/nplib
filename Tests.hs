@@ -166,7 +166,7 @@ prop_nestedInequalities (constraints' :: [Constraint Var]) =
                                 
 getSummary = do
   election <- e
-  let solver = possibleWinnersBySolverDebug ZChaff pluralityWithRunoffManipulation election
+  let solver = possibleWinnersBySolverDebug ZChaff copelandManipulation election
   let (sat, trueProps) = solver 0 election (Candidate 2)
 
   let summary = summarizeElection trueProps []
@@ -178,7 +178,7 @@ getSummary = do
 main = do
   s <- getSummary
   election <- e
-  let (p1, p2) = (pluralityWithRunoffManipulation 0 election)
+  let (p1, p2) = (copelandManipulation 0 election)
   let p = p1 ++ p2 election (Candidate 2)
   writeFile "theProblem" (show p)
   writeFile "problemSummary1" s
