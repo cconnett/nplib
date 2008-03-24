@@ -27,9 +27,10 @@ main = do
        let method = args !! 0
            winnerCalculator = case method of
                                 "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
+                                "f2w" -> findTwoWinners (read (args !! 1))
                                 "sat" -> possibleWinnersBySolver ZChaff (read (args !! 1)) (head elections)
                                 --"ilp" -> possibleWinnersBySolver GLPK (read (args !! 1))
-                                _     -> error "Supported methods are \nbf\nsat"
+                                _     -> error "Supported methods are \nbf\nf2w\nsat"
        sequence $
           [do let theMinimumManipulators = minimumManipulators winnerCalculator election
               putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulators)
