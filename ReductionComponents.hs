@@ -158,8 +158,8 @@ pairwiseTie ballots c d =
 copelandScoreBetter candidates ballots c d =
     pluralizeEmbedding [pairwiseVictory ballots d e | e <- delete d candidates] $ \dVics ->
     pluralizeEmbedding [pairwiseVictory ballots c e | e <- delete c candidates] $ \cVics ->
-    pluralizeEmbedding [pairwiseTie     ballots c e | e <- delete c candidates] $ \dTies ->
-    pluralizeEmbedding [pairwiseTie     ballots d e | e <- delete d candidates] $ \cTies ->
+    pluralizeEmbedding [pairwiseTie     ballots d e | e <- delete d candidates] $ \dTies ->
+    pluralizeEmbedding [pairwiseTie     ballots c e | e <- delete c candidates] $ \cTies ->
     trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
     Inequality ([( 2, dVic) | dVic <- dVics] ++
                 [(-2, cVic) | cVic <- cVics] ++
