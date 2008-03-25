@@ -16,7 +16,6 @@ import Test.QuickCheck
 import qualified Data.Set as S
 import Solvers
 import Maybe
-import Debug.Trace
 import ZChaffSolver
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
@@ -26,7 +25,6 @@ findTwoWinners rule manips votes = filter canWin candidates
           canWin candidate = [candidate] == (rule candidates $
                              votes ++ (replicate manips $
                                        (Vote ([candidate] ++ pack ++ [leader]))))
-                             
               where pack = delete candidate $ delete leader $ candidates
                     leader = head $ rule candidates votes -- arbitrary leader if tie exists
 
@@ -36,7 +34,7 @@ possibleWinnersByBruteForce rule manipulators votes
     | manipulators > length votes = candidates
     -- more manips than candidates: all candidates can be made to win!
     -- (in reasonable voting systems, assumed)
-    | otherwise = trace (show manipulators) $
+    | otherwise = myTrace (show manipulators) $
                   nub' (length candidates) $ concat $
                   map (uniqueWinner.(rule candidates).(++votes).(manipulatorVotes candidates)) $
                   manipulatorVoteRankWeights manipulators (factorial $ length candidates)
@@ -75,7 +73,7 @@ possibleWinnersBySolver solver manipulationProblemEr election =
                           (toDIMACS vm (Formula clauses), vm)) .
                      (\m -> fst $ manipulationProblemEr m election)) [0..] in
     let realSolver manipulators votes =
-            trace (show manipulators) $
+            myTrace (show manipulators) $
             let part2 = snd $ manipulationProblemEr manipulators election
                 solveRest = startPartial solver (cache !! manipulators) in
             filter (\target -> (fst . solveRest) (part2 votes target)) candidates
@@ -89,7 +87,7 @@ possibleWinnersBySolverDebug solver manipulationProblemEr election =
                           (toDIMACS vm (Formula clauses), vm)) .
                      (\m -> fst $ manipulationProblemEr m election)) [0..] in
     let realSolver manipulators votes =
-            trace (show manipulators) $
+            myTrace (show manipulators) $
             let part2 = snd $ manipulationProblemEr manipulators election
                 solveRest = startPartial solver (cache !! manipulators)
             in (\target -> solveRest (part2 votes target))

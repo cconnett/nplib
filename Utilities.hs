@@ -9,7 +9,9 @@ import qualified Data.Map as M
 import Debug.Trace
 import Test.QuickCheck
 
-traceIt s = trace ("\nTRACEIT:" ++ show s) s
+debug = False
+myTrace = if debug then trace else flip const
+traceIt s = myTrace ("\nTRACEIT:" ++ show s) s
 
 -- nub with an upper limit
 nub' :: Eq a => Int -> [a] -> [a]

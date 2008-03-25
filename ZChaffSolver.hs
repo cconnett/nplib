@@ -16,7 +16,6 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import Foreign (unsafePerformIO)
 
-import Debug.Trace
 import Utilities
     
 data ZChaff = ZChaff
@@ -26,7 +25,7 @@ instance Solver ZChaff where
 -- Conversion of Problem instances to DIMACS (CNF-SAT) formats.
 toDIMACS varMap (Formula clauses) = toDIMACS' varMap clauses
 toDIMACS varMap (TopFormula clauses) = toDIMACS' varMap clauses
-toDIMACS' varMap clauses = --trace (show clauses) $
+toDIMACS' varMap clauses =
      [map transformProposition $ fromClause clause
           | clause <- clauses]
         where transformProposition (Not p) = -(transformProposition p)
@@ -47,8 +46,8 @@ zchaffA (cnf1, varMap1) =
               numVars = M.size varMapUnion
               numClauses = length cnf1 + length cnf2
               dimacs = unlines $
-                  ("p cnf " ++ trace (show numVars) (show numVars) ++ " " ++
-                               trace (show numClauses) (show numClauses)) :
+                  ("p cnf " ++ myTrace (show numVars) (show numVars) ++ " " ++
+                               myTrace (show numClauses) (show numClauses)) :
                   (map (unwords . (map show) . (++[0])) $ cnf1 ++ cnf2)
           in
           unsafePerformIO $ do
