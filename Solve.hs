@@ -19,11 +19,13 @@ import Solvers
 
 main = do
   args <- getArgs
-  if length args /= 3
-     then error "Solve method rule electionsFile"
+  if not $ length args `elem` [3,4]
+     then error "Solve method rule electionsFile [startNo]"
      else do
        let electionsFilename = (args !! 2) :: String
+       let startNo = if length args == 4 then (read $ args !! 3) else 1
        elections <- readElections electionsFilename
+       if (not $ 0 < startNo && startNo <= length elections) then error "Bad startNo" else do
        let method = args !! 0
            winnerCalculator = case method of
                                 "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
@@ -34,5 +36,4 @@ main = do
        sequence $
           [do let theMinimumManipulators = minimumManipulators winnerCalculator election
               putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulators)
-              --putStrLn (show $ theMinimumManipulators !! 1)
-           | (electionNo, election) <- zip [1..] elections]
+           | (electionNo, election) <- zip [startNo..] (drop (startNo - 1) elections)]
