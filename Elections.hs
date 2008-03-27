@@ -12,25 +12,21 @@ import IO
 import Control.Monad
 import Data.Ord
     
-type VoteGenerator a = [Candidate a] -> Gen (Vote a)
-
-instance (Eq a) => Read (VoteGenerator a) where
-    readsPrec _  str = [(parse (words str), "")]
-        where parse ["uniform"] = uniformVote
-              parse ["condorcet", p] = condorcetVote (read p)
-              parse ["spatial", d, stddev] = spatialVote (read d) (read stddev)
-              parse _ = error ("Supported distributions are\n" ++
-                               (unlines distributions))
-
-distributions :: [String]
 distributions = ["uniform", "condorcet p", "spatial d stddev"]
+
+getVoteGenerator :: (Eq a) => [String] -> [Candidate a] -> Gen (Gen (Vote a))
+getVoteGenerator ["uniform"] candidates = return $ uniformVote candidates
+getVoteGenerator ["condorcet", p] candidates = return $ condorcetVote (read p) candidates
+getVoteGenerator ["spatial", d] candidates = do
+  let issues = read d
+  candidatePositions <- sequence $ replicate (length candidates) $ sequence $ replicate issues $ normal 0 1
+  return $ spatialVote issues candidatePositions candidates
+getVoteGenerator _ _ = error ("Supported distributions are\n" ++ (unlines distributions))
 
 -- generates a random set of n votes over candidates using vote
 -- generator genVote
-election :: (Eq a) =>
-            VoteGenerator a ->
-            [Candidate a] -> Int -> Gen [Vote a]
-election genVote candidates n = replicateM n (genVote candidates)
+election :: (Eq a) => Gen (Vote a) -> Int -> Gen [Vote a]
+election voteGenerator n = replicateM n voteGenerator
 
 -- generates a vote over candidates u.a.r. from all permuations of candidates
 uniformVote :: (Eq a) => [Candidate a] -> Gen (Vote a)
@@ -63,11 +59,9 @@ normal mean stddev = do
   b <- uniform :: Gen Double
   return $ stddev * (sqrt (-2*log a) * cos (2*pi*b)) + mean
 
--- FIXME: candidatePositions needs to be generated once for all votes!
-spatialVote :: (Eq a) => Int -> Double -> [Candidate a] -> Gen (Vote a)
-spatialVote issues stddev candidates = do
-  voter <- sequence $ replicate issues $ normal 0 stddev
-  candidatePositions <- sequence $ replicate (length candidates) $ sequence $ replicate issues $ normal 0 stddev
+spatialVote :: (Eq a) => Int -> [[Double]] -> [Candidate a] -> Gen (Vote a)
+spatialVote issues candidatePositions candidates = do
+  voter <- sequence $ replicate issues $ normal 0 1
   let distance voter candidate = sqrt $ sum $ zipWith (-) voter (position candidate)
       position candidate       = fromJust $ lookup candidate positionMap
       positionMap              = zip candidates candidatePositions

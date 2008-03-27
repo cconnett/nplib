@@ -6,25 +6,18 @@ import System
 import Test.QuickCheck
 import RunGenIO
 import Random
-    
-prop_genElections distribution candidates nonmanipulators =
-    forAll (election distribution (map Candidate [1..candidates]) nonmanipulators)
-               (\e -> True)
-        
+import Control.Monad
+
 main = do
   setStdGen $ mkStdGen 19019
   args <- getArgs
   if length args /= 4
-    then error "Elections count distribution candidates nonmanipulators"
-    else
-        do
-          let count = (read $ args !! 0) :: Int
-              voteGenerator = (read $ args !! 1) :: VoteGenerator Int
-              candidates = (read $ args !! 2) :: Int
-              nonmanipulators = (read $ args !! 3) :: Int
-          elections <- runGenIO $ sequence $ replicate count $
-                         election
-                           voteGenerator
-                           (map Candidate [1..candidates])
-                           nonmanipulators
-          putStrLn $ show $ elections
+    then error "GenElections count distribution candidates nonmanipulators"
+    else do
+      let count = (read $ args !! 0) :: Int
+          candidates = map Candidate [1..read $ args !! 2]
+          nonmanipulators = (read $ args !! 3) :: Int
+      voteGenerator <- runGenIO $ getVoteGenerator (words $ args !! 1) candidates
+      elections <- runGenIO $ replicateM count $
+                   election voteGenerator nonmanipulators
+      putStrLn $ show $ elections
