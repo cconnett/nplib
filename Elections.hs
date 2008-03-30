@@ -12,7 +12,7 @@ import IO
 import Control.Monad
 import Data.Ord
     
-distributions = ["uniform", "condorcet p", "spatial d stddev"]
+distributions = ["uniform", "condorcet p", "spatial d"]
 
 getVoteGenerator :: (Eq a) => [String] -> [Candidate a] -> Gen (Gen (Vote a))
 getVoteGenerator ["uniform"] candidates = return $ uniformVote candidates
