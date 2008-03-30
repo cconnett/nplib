@@ -14,6 +14,7 @@ import Data.List
 data VoteDatum a = VoteDatum {vdVoter :: Int, vdCandidate :: Candidate a, vdPosition :: Int}
                  | PairwiseDatum {pwVoter :: Int, pwCandidateA, pwCandidateB :: Candidate a}
                  | Eliminated {eRound :: Int, eCandidate :: Candidate a}
+                 | Counts {cVoter :: Int}
     deriving (Show, Read, Eq, Ord)
 isVoteDatum (VoteDatum _ _ _) = True
 isVoteDatum _ = False
@@ -21,7 +22,12 @@ isPairwiseDatum (PairwiseDatum _ _ _) = True
 isPairwiseDatum _ = False
 isElimination (Eliminated _ _) = True
 isElimination _ = False
-    
+
+-- If some voter counts, all previous voters count.
+countPreviousVoters voterSet manipulatorSet =
+    [Formula [Clause [neg $ Merely $ Counts v, Merely $ Counts (v-1)]]
+         | v <- voterSet ++ manipulatorSet, v > 0]
+
 -- Non-manipulators' positional votes, directly encoded.
 nonManipulatorPositionalVotes votes voterSet candidates positions =
     [Formula $ Clause [Merely $ VoteDatum voter candidate correctPosition] :
@@ -37,7 +43,7 @@ nonManipulatorPairwiseVotes votes voterSet candidates =
            candidateA <- candidates,
            candidateB <- candidates,
            candidateA /= candidateB]
-    
+
 -- Manipulator vote constraints (no two candidates in same position).
 manipulatorPositionalPositionInjection manipulatorSet candidates positions =
     [Formula
