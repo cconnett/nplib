@@ -5,7 +5,7 @@ module Main
 
 import Manipulation
 import ILPSAT
-import ZChaffSolver
+import SatSolvers
 --import GLPKSolver
 import System
 import Voting

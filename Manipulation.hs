@@ -16,7 +16,7 @@ import Test.QuickCheck
 import qualified Data.Set as S
 import Solvers
 import Maybe
-import ZChaffSolver
+import SatSolvers
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
 findTwoWinners :: (Eq a) => Rule a -> Int -> [Vote a] -> [Candidate a]
