@@ -92,6 +92,11 @@ possibleWinnersBySolverDebug solver manipulationProblemEr election =
                 solveRest = startPartial solver (cache !! manipulators)
             in (\target -> solveRest (part2 votes target))
     in realSolver
+
+hybridSolver solver1 solver2 manipulators votes
+    | manipulators < 15 = solver1 manipulators votes
+    | otherwise         = solver2 manipulators votes
+
 minimumManipulators :: (Ord a) =>
                        (Int -> [Vote a] -> [Candidate a]) -> [Vote a] -> [Int]
 minimumManipulators possibleWinners election =

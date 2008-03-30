@@ -17,6 +17,8 @@ import Control.Monad
 import Test.QuickCheck
 import Solvers
 
+satSolver = RSat
+
 main = do
   args <- getArgs
   if not $ length args `elem` [3,4]
@@ -30,9 +32,11 @@ main = do
            winnerCalculator = case method of
                                 "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
                                 "f2w" -> findTwoWinners (read (args !! 1))
-                                "sat" -> possibleWinnersBySolver ZChaff (read (args !! 1)) (head elections)
-                                --"ilp" -> possibleWinnersBySolver GLPK (read (args !! 1))
-                                _     -> error "Supported methods are \nbf\nf2w\nsat"
+                                "sat" -> possibleWinnersBySolver satSolver (read (args !! 1)) (head elections)
+                                "hyb" -> hybridSolver
+                                          (possibleWinnersByBruteForce (read (args !! 1)))
+                                          (possibleWinnersBySolver satSolver (read (args !! 1)) (head elections))
+                                _     -> error "Supported methods are \nbf\nf2w\nsat\nhyb"
        sequence $
           [do let theMinimumManipulators = minimumManipulators winnerCalculator election
               putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulators)
