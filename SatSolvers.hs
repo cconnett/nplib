@@ -18,7 +18,7 @@ import Foreign (unsafePerformIO)
 
 import Utilities
 
-solversHome = "/home/chris/schoolwork/thesis/sat/"
+solversHome = "/home/stu2/s1/cxc0117/thesis/sat/"
 
 class SatSolver ss where
     run :: ss -> String -> IO String

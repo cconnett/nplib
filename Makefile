@@ -2,13 +2,12 @@ BASEFLAGS=-fglasgow-exts -fno-monomorphism-restriction -funbox-strict-fields -dc
 #PROFILEFLAGS=-prof -auto-all
 #COVERAGEFLAGS=-fhpc
 #THREADED=-threaded
-OPTFLAGS=-O -optc-O2 -optc-march=k8
+OPTFLAGS=-O -optc-O1
 
 FLAGS=${BASEFLAGS} ${THREADED} ${PROFILEFLAGS} ${COVERAGEFLAGS} ${OPTFLAGS}
 
 #all: BruteForce GenElections Summarize Solve Tests
 all: Solve
-#all: Tests
 
 clean:
 	rm -rf *.o BruteForce GenElections Solve Summarize Tests *.tix .hpc
