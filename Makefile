@@ -1,7 +1,7 @@
 BASEFLAGS=-fglasgow-exts -fno-monomorphism-restriction -funbox-strict-fields -dcore-lint
 #PROFILEFLAGS=-prof -auto-all
 #COVERAGEFLAGS=-fhpc
-#THREADED=-threaded
+THREADED=-threaded
 OPTFLAGS=-O -optc-O2 -optc-march=k8
 
 FLAGS=${BASEFLAGS} ${THREADED} ${PROFILEFLAGS} ${COVERAGEFLAGS} ${OPTFLAGS}
