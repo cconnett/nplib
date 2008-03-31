@@ -33,7 +33,7 @@ main = do
                                 "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
                                 "f2w" -> findTwoWinners (read (args !! 1))
                                 "sat" -> possibleWinnersBySolver satSolver (read (args !! 1)) (head elections)
-                                "hyb" -> hybridSolver
+                                "hyb" -> hybridSolver (head elections)
                                           (possibleWinnersByBruteForce (read (args !! 1)))
                                           (possibleWinnersBySolver satSolver (read (args !! 1)) (head elections))
                                 _     -> error "Supported methods are \nbf\nf2w\nsat\nhyb"

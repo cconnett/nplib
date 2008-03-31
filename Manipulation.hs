@@ -3,6 +3,7 @@
 module Manipulation
     where
 
+import Prelude hiding (catch)
 import Data.List
 import Voting hiding (beats)
 import ILPSAT
@@ -17,6 +18,11 @@ import qualified Data.Set as S
 import Solvers
 import Maybe
 import SatSolvers
+import Foreign (unsafePerformIO)
+import GHC.Conc
+import Control.Exception
+
+import Debug.Trace
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
 findTwoWinners :: (Eq a) => Rule a -> Int -> [Vote a] -> [Candidate a]
@@ -93,9 +99,25 @@ possibleWinnersBySolverDebug solver manipulationProblemEr election =
             in (\target -> solveRest (part2 votes target))
     in realSolver
 
-hybridSolver solver1 solver2 manipulators votes
-    | manipulators < 15 = solver1 manipulators votes
-    | otherwise         = solver2 manipulators votes
+hybridSolver nullVotes solver1 solver2 = internalSolver
+    where internalSolver manipulators votes
+              | s2ValuesOfM !! manipulators = myTrace (show manipulators ++ " sat") $
+                                              solver2 manipulators votes
+              | otherwise                   = myTrace (show manipulators ++ " bf") $
+                                              solver1 manipulators votes
+          s2ValuesOfM = takesTooLong 0 : (zipWith (||) s2ValuesOfM (map takesTooLong [1..]))
+          takesTooLong m =
+              unsafePerformIO $ do
+                result <- newEmptyMVar
+                parentId <- myThreadId
+                workerId <- forkIO $ do {putMVar result $! solver1 m nullVotes;
+                                         throwTo parentId (ErrorCall "Finished =D")
+                                        }
+                catch (threadDelay $ 50 * 10^6)
+                      (const $ return ())
+                killThread workerId
+                computedResult <- tryTakeMVar result
+                return $ isNothing computedResult
 
 minimumManipulators :: (Ord a) =>
                        (Int -> [Vote a] -> [Candidate a]) -> [Vote a] -> [Int]
