@@ -40,7 +40,7 @@ possibleWinnersByBruteForce rule manipulators votes
     | manipulators > length votes = candidates
     -- more manips than candidates: all candidates can be made to win!
     -- (in reasonable voting systems, assumed)
-    | otherwise = myTrace (show manipulators) $
+    | otherwise = myTrace ("brute forcing: " ++ show manipulators) $
                   nub' (length candidates) $ concat $
                   map (uniqueWinner.(rule candidates).(++votes).(manipulatorVotes candidates)) $
                   manipulatorVoteRankWeights manipulators (factorial $ length candidates)
@@ -79,7 +79,7 @@ possibleWinnersBySolver solver manipulationProblemEr election =
                           (toDIMACS vm (Formula clauses), vm)) .
                      (\m -> fst $ manipulationProblemEr m election)) [0..] in
     let realSolver manipulators votes =
-            myTrace (show manipulators) $
+            myTrace ("sat solving: " ++ show manipulators) $
             let part2 = snd $ manipulationProblemEr manipulators election
                 solveRest = startPartial solver (cache !! manipulators) in
             filter (\target -> (fst . solveRest) (part2 votes target)) candidates
@@ -101,11 +101,11 @@ possibleWinnersBySolverDebug solver manipulationProblemEr election =
 
 hybridSolver nullVotes solver1 solver2 = internalSolver
     where internalSolver manipulators votes
-              | s2ValuesOfM !! manipulators = myTrace (show manipulators ++ " sat") $
+              | s2ValuesOfM !! manipulators = myTrace (show manipulators ++ " sat'd") $
                                               solver2 manipulators votes
-              | otherwise                   = myTrace (show manipulators ++ " bf") $
+              | otherwise                   = myTrace (show manipulators ++ " bf'd") $
                                               solver1 manipulators votes
-          s2ValuesOfM = takesTooLong 0 : (zipWith (||) s2ValuesOfM (map takesTooLong [1..]))
+          s2ValuesOfM = map takesTooLong [0..]
           takesTooLong m =
               unsafePerformIO $ do
                 result <- newEmptyMVar
