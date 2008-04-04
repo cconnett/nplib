@@ -24,10 +24,15 @@ isElimination (Eliminated _ _) = True
 isElimination _ = False
 
 -- If some voter counts, all previous voters count.
-countPreviousVoters ballots =
-    [Formula [Clause [neg $ Merely $ Counts v, Merely $ Counts (v-1)]]
-         | v <- ballots, v > 0]
-count voter = [Formula [Clause [Merely $ Counts voter]]]
+count ballots lastVoter =
+    let realLastVoter = max 0 $ min (last ballots) lastVoter in
+    [Formula [Clause [neg $ Merely $ Counts v, Merely $ Counts (v-1)]
+                  | v <- ballots, v - 1 >= 0],
+     Formula [Clause [Merely $ Counts v, neg $ Merely $ Counts (v+1)]
+                  | v <- ballots, v + 1 <= last ballots],
+     Formula [Clause [Merely $ Counts lastVoter]],
+     Formula [Clause [neg $ Merely $ Counts (lastVoter + 1)]]
+    ]
 
 -- Non-manipulators' positional votes, directly encoded.
 nonManipulatorPositionalVotes votes voterSet candidates positions =

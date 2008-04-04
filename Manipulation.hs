@@ -73,16 +73,15 @@ possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> [Vote a] -
 possibleWinnersBySolver solver manipulationProblemEr election =
     let numVotes = length election
         candidates = extractCandidates election
-        cache = map ((\problem ->
-                          let clauses = sortNub $ fromFormula $ conjoin problem
-                              vm = varMap clauses in
-                          (toDIMACS vm (Formula clauses), vm)) .
-                     (\m -> fst $ manipulationProblemEr m election)) [0..] in
+        cache = let clauses = sortNub $ fromFormula $
+                              conjoin (fst $ manipulationProblemEr election)
+                    vm = varMap clauses
+                in (toDIMACS vm (Formula clauses), vm) in
     let realSolver manipulators votes =
             myTrace ("sat solving: " ++ show manipulators) $
-            let part2 = snd $ manipulationProblemEr manipulators election
-                solveRest = startPartial solver (cache !! manipulators) in
-            filter (\target -> (fst . solveRest) (part2 votes target)) candidates
+            let part2 = snd $ manipulationProblemEr election
+                solveRest = startPartial solver cache in
+            filter (\target -> (fst . solveRest) (part2 votes manipulators target)) candidates
     in realSolver
 possibleWinnersBySolverDebug solver manipulationProblemEr election =
     let numVotes = length election

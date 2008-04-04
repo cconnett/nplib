@@ -11,31 +11,30 @@ import Data.List
 
 import Utilities
 
-type MPR a = Int -> [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))
+type MPR a = [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Int -> Candidate a -> Problem (VoteDatum a))
 instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
-    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
+    --readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
-    readsPrec _ "irv" = [(irvManipulation, "")]
-    readsPrec _ "copeland" = [(copelandManipulation, "")]
+    --readsPrec _ "irv" = [(irvManipulation, "")]
+    --readsPrec _ "copeland" = [(copelandManipulation, "")]
     readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\ncopeland\n"
 
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
-                               (k -> [k]) -> Int -> [Vote a] ->
-                               (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))
-scoringProtocolManipulation s manipulators votes =
+                               (k -> [k]) -> [Vote a] ->
+                               (Problem (VoteDatum a), [Vote a] -> Int -> Candidate a -> Problem (VoteDatum a))
+scoringProtocolManipulation s votes =
     let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..manipulators]
+        manipulatorSet = map (+length votes) [1..length votes + 1]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
         positions = [0..length candidates-1]
         scoreList = s (fromIntegral $ length candidates)
-    in (countPreviousVoters ballots ++
-        count (last ballots) ++
-        concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
+    in (concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
                 manipulatorPositionalPositionSurjection manipulatorSet candidates positions]
-       , \votes target ->
+       , \votes manipulators target ->
+        count ballots (length votes + manipulators) ++
         nonManipulatorPositionalVotes votes voterSet candidates positions ++
         -- Target wins. Since the reduction from ILP to SAT assumes
         -- the inequality is <=, points are bad: points for opponents
@@ -62,9 +61,7 @@ pluralityWithRunoffManipulation manipulators votes =
         rounds = [0,1,2] in
     let point' = point candidates
         points' = points candidates in
-    (countPreviousVoters ballots ++
-     count (last ballots) ++
-     concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
+    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates,
              eliminationBasics candidates rounds,
              firstPlacePoints candidates ballots rounds] ++
@@ -102,8 +99,7 @@ irvManipulation manipulators votes =
     let beats' = beats candidates ballots
         point' = point candidates
         points' = points candidates in
-    (countPreviousVoters ballots ++
-     count (last ballots) ++
+    (count ballots (last ballots) ++
      concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates,
              eliminationBasics candidates rounds,
@@ -141,8 +137,7 @@ copelandManipulation manipulators votes =
         manipulatorSet = map (+length votes) [1..manipulators]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes in
-    (countPreviousVoters ballots ++
-     count (last ballots) ++
+    (count ballots (last ballots) ++
      concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates]
     , \votes target ->
