@@ -28,7 +28,7 @@ texify vars = unlines $ map (\(str, i) -> "$" ++ show i ++ "=" ++ filter (/='"')
 -- Inequalities are (LHS = [(coefficient, variable)], RHS), with an implied less-than-or-equal-to: LHS <= RHS.
 -- Constrants are polymorphic with respect to variables to be solved for.
 data Constraint a = Formula ![Clause a]
-                  | Inequality !([(Int, Proposition a)], Int)
+                  | Inequality !([(Int, Problem a)], Int)
                   | TopFormula ![Clause a]
 --                     deriving (Show, Read, Eq, Ord)
                      deriving (Read, Eq, Ord)
@@ -47,6 +47,8 @@ pushTL = TopFormula . fromFormula
 -- A problem in this module is a set of constraints, which can be
 -- mixed between SAT formula and ILP inequalities.
 type Problem a = [Constraint a]
+propositionToProblem p  = [Formula [Clause [p]]]
+problemToProposition [Formula [Clause [p]]] = p
 
 fromProposition :: Proposition a -> a
 fromProposition (Merely var) = var
@@ -108,11 +110,12 @@ show2 (Auxiliary ineqNo label bitNo varSet) =
     "Aux (" ++ show ineqNo ++ ", " ++ label ++ ", " ++ show bitNo ++ ", " ++ show varSet ++ ")"
 
 -- Functor instances for Constraint
-instance Functor Constraint where
+{-instance Functor Constraint where
     fmap f (Formula formula) = Formula (map (\(Clause c) -> Clause (map (propApply f) c) ) formula)
     fmap f (Inequality (addends, rhs)) = Inequality (map (second (propApply f)) addends, rhs)
 propApply f (Not p) = Not (propApply f p)
 propApply f (Merely v) = Merely (f v)
+-}
 
 -- Var is a nice restricted version of Char that is convenient to use
 -- in Arbitrary Constraints.
@@ -138,7 +141,7 @@ arbitraryInequality = sized $ (\n -> do
                                  coeffs <- vector (n+1)
                                  as <- vector (n+1)
                                  b <- arbitrary
-                                 return $ Inequality (reduce coeffs (map normalizeProposition as), b))
+                                 return $ Inequality (reduce coeffs (map (propositionToProblem . normalizeProposition) as), b))
     where reduce coeffs as = map (\(a,b)->(b,a)) $ M.toList $ M.fromListWith (+) (zip as coeffs)
 instance (Arbitrary a) => Arbitrary (Clause a) where
     arbitrary = sized (\n -> (liftM Clause) (resize (round $ sqrt $ fromIntegral n) arbitrary))
@@ -172,7 +175,8 @@ detrivialize' tf@(TopFormula clauses) = if null it then Nothing else Just (TopFo
 cleanFormula (Formula formula) = Formula $ filter (not . null . fromClause) formula
 cleanFormula (TopFormula formula) = TopFormula $ filter (not . null . fromClause) formula
 cleanInequality (Inequality (summands, b)) =
-    Inequality $ (map (\(coeff, p) -> case (coeff, p) of
-                                        (coeff, p) | isNeg p -> (-coeff, neg p)
-                                        otherwise            -> (coeff, p))
+    Inequality $ (map (\(coeff, pr) ->
+                           case (coeff, pr) of
+                             (coeff, [Formula [Clause [p]]]) | isNeg p -> (-coeff, [Formula [Clause [neg p]]])
+                             otherwise            -> (coeff, pr))
                   summands, b)

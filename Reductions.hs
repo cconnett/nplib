@@ -27,10 +27,13 @@ scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
 scoringProtocolManipulation s manipulators votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..manipulators]
+        ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
         positions = [0..length candidates-1]
         scoreList = s (fromIntegral $ length candidates)
-    in (concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
+    in (countPreviousVoters ballots ++
+        count (last ballots) ++
+        concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
                 manipulatorPositionalPositionSurjection manipulatorSet candidates positions]
        , \votes target ->
         nonManipulatorPositionalVotes votes voterSet candidates positions ++
@@ -38,10 +41,14 @@ scoringProtocolManipulation s manipulators votes =
         -- the inequality is <=, points are bad: points for opponents
         -- are positive, and points for our target are negative.  The
         -- target wins if the total is <= -1.
-        [Inequality ([( fromIntegral (scoreList!!position), Merely $ VoteDatum voter opponent position)
+        [Inequality ([( fromIntegral (scoreList!!position),
+                                     [Formula [Clause [Merely $ Counts voter],
+                                               Clause [Merely $ VoteDatum voter opponent position]]])
                           | voter <- voterSet ++ manipulatorSet,
                             position <- positions] ++
-                     [(-fromIntegral (scoreList!!position), Merely $ VoteDatum voter target position)
+                     [(-fromIntegral (scoreList!!position),
+                                     [Formula [Clause [Merely $ Counts voter],
+                                               Clause [Merely $ VoteDatum voter target position]]])
                           | voter <- voterSet ++ manipulatorSet,
                             position <- positions],
                  -1)
@@ -55,7 +62,9 @@ pluralityWithRunoffManipulation manipulators votes =
         rounds = [0,1,2] in
     let point' = point candidates
         points' = points candidates in
-    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
+    (countPreviousVoters ballots ++
+     count (last ballots) ++
+     concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates,
              eliminationBasics candidates rounds,
              firstPlacePoints candidates ballots rounds] ++
@@ -65,7 +74,7 @@ pluralityWithRunoffManipulation manipulators votes =
      [let cAdvancesTag = (show c ++ " advances to round 1")
           ineqNumber = fromIntegral $ hash cAdvancesTag in
       losses candidates ballots 0 c $ \cLosses ->
-      embedProblem cAdvancesTag (trans ineqNumber $ Inequality ([(1, loss) | loss <- cLosses], 1)) $ \cAdvances ->
+      embedProblem cAdvancesTag (trans ineqNumber $ Inequality ([(1, propositionToProblem loss) | loss <- cLosses], 1)) $ \cAdvances ->
        [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)] ++
        []
       | c <- candidates] ++
@@ -93,7 +102,9 @@ irvManipulation manipulators votes =
     let beats' = beats candidates ballots
         point' = point candidates
         points' = points candidates in
-    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
+    (countPreviousVoters ballots ++
+     count (last ballots) ++
+     concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates,
              eliminationBasics candidates rounds,
              firstPlacePoints candidates ballots rounds] ++
@@ -130,7 +141,9 @@ copelandManipulation manipulators votes =
         manipulatorSet = map (+length votes) [1..manipulators]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes in
-    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
+    (countPreviousVoters ballots ++
+     count (last ballots) ++
+     concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates]
     , \votes target ->
         nonManipulatorPairwiseVotes votes voterSet candidates ++

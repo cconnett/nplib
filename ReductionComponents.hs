@@ -24,9 +24,10 @@ isElimination (Eliminated _ _) = True
 isElimination _ = False
 
 -- If some voter counts, all previous voters count.
-countPreviousVoters voterSet manipulatorSet =
+countPreviousVoters ballots =
     [Formula [Clause [neg $ Merely $ Counts v, Merely $ Counts (v-1)]]
-         | v <- voterSet ++ manipulatorSet, v > 0]
+         | v <- ballots, v > 0]
+count voter = [Formula [Clause [Merely $ Counts voter]]]
 
 -- Non-manipulators' positional votes, directly encoded.
 nonManipulatorPositionalVotes votes voterSet candidates positions =
@@ -111,8 +112,8 @@ beats candidates ballots
                         Formula [Clause [neg $ Merely $ Eliminated r a]] :
                         (trans ineqNumber $
                          --(\ineq -> unsafePerformIO (do {writeFile ("ineqDump"++show a ++ show b ++ show r) (show ineq); return ineq})) $
-                         Inequality ([( 1, bPoint) | bPoint <- bPoints] ++
-                                     [(-1, aPoint) | aPoint <- aPoints], -1)) ++
+                         Inequality ([( 1, propositionToProblem bPoint) | bPoint <- bPoints] ++
+                                     [(-1, propositionToProblem aPoint) | aPoint <- aPoints], -1)) ++
                        [])
     where --ineqNumber = (10^9 + (fromCandidate a*10^6) + (fromCandidate b*10^3) + r)
           ineqNumber = fromIntegral $ hash (show a ++ show b ++ show r)
@@ -153,8 +154,8 @@ fullShouldBeEliminated candidates ballots
 pairwiseVictory ballots c d =
     let tag = (show c ++ " defeats " ++ show d) in
     embedProblem tag (trans (fromIntegral $ hash tag) $
-                      Inequality ([(-1, Merely $ PairwiseDatum v c d) | v <- ballots] ++
-                                  [( 1, Merely $ PairwiseDatum v d c) | v <- ballots], -1))
+                      Inequality ([(-1, propositionToProblem $ Merely $ PairwiseDatum v c d) | v <- ballots] ++
+                                  [( 1, propositionToProblem $ Merely $ PairwiseDatum v d c) | v <- ballots], -1))
 pairwiseTie ballots c d =
     embedProblem (show c ++ " ties " ++ show d) $
     pairwiseVictory ballots c d $ \cBeatsD ->
@@ -167,8 +168,8 @@ copelandScoreBetter candidates ballots c d =
     pluralizeEmbedding [pairwiseTie     ballots d e | e <- delete d candidates] $ \dTies ->
     pluralizeEmbedding [pairwiseTie     ballots c e | e <- delete c candidates] $ \cTies ->
     trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
-    Inequality ([( 2, dVic) | dVic <- dVics] ++
-                [(-2, cVic) | cVic <- cVics] ++
-                [( 1, dTie) | dTie <- dTies] ++
-                [(-1, cTie) | cTie <- cTies],
+    Inequality ([( 2, propositionToProblem dVic) | dVic <- dVics] ++
+                [(-2, propositionToProblem cVic) | cVic <- cVics] ++
+                [( 1, propositionToProblem dTie) | dTie <- dTies] ++
+                [(-1, propositionToProblem cTie) | cTie <- cTies],
                  -1)

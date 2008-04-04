@@ -1,7 +1,6 @@
 module Embeddings where
 
 import ILPSAT
-import ILPSATReduction
 import qualified Data.HashTable as HT
 import Data.List
 
@@ -59,9 +58,10 @@ embedProblem tag problem surrogateExpr =
            
 negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
                           
-pluralizeEmbedding fns multiSurrogateExpr = pluralizeEmbedding' fns [] multiSurrogateExpr
+pluralizeEmbedding embeddings multiSurrogateExpr = pluralizeEmbedding' (reverse embeddings) [] multiSurrogateExpr
 pluralizeEmbedding' [] acc multiSurrogateExpr = multiSurrogateExpr acc
-pluralizeEmbedding' (fn:fns) acc multiSurrogateExpr = fn $ \a-> pluralizeEmbedding' fns (a:acc) multiSurrogateExpr
+pluralizeEmbedding' (embedding:embeddings) acc multiSurrogateExpr =
+    embedding $ \a-> pluralizeEmbedding' embeddings (a:acc) multiSurrogateExpr
 
 -- Convenience functions operating on embeddings
 tautology embedding = embedding (\surrogate -> [Formula [Clause [surrogate]]])
