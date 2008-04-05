@@ -1,6 +1,8 @@
 module Embeddings where
 
 import ILPSAT
+--import ILPSATReduction
+import Hash
 import qualified Data.HashTable as HT
 import Data.List
 
@@ -30,6 +32,8 @@ embedTopFormula tag tf surrogateExpr = tf : surrogateExpr (Surrogate tag tf)
 -- embed.  Instead, just make the caller call trans with the
 -- ineqNumber and call embedProblem with a tag.
 embedInequality tag ineq surrogateExpr = undefined
+--embedInequality tag ineq = embedFormula tag $ trans (hash tag) ineq
+
 
 embedConstraint :: Show a => String -> Constraint a -> (Proposition a -> Problem a) -> Problem a
 embedConstraint tag c surrogateExpr =

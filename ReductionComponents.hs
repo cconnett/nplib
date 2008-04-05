@@ -107,7 +107,27 @@ firstPlacePoints candidates ballots rounds =
                    r <- init rounds,
                    a <- candidates,
                    b <- candidates, a < b])
-    
+
+--Scoring protocol related embeddings
+outscores ballots positions scoreList winner loser =
+    let tag = (show winner ++ " outscores " ++ show loser) in
+    embedProblem tag $ trans (fromIntegral $ hash tag) $
+    -- Since the reduction from ILP to SAT assumes the inequality is
+    -- <=, points are bad: points for opponents are positive, and
+    -- points for our target are negative.  The target wins if the
+    -- total is <= -1.
+    Inequality ([( fromIntegral (scoreList!!position),
+                                    [Formula [Clause [Merely $ Counts voter],
+                                              Clause [Merely $ VoteDatum voter loser position]]])
+                 | voter <- ballots,
+                   position <- positions] ++
+                [(-fromIntegral (scoreList!!position),
+                                    [Formula [Clause [Merely $ Counts voter],
+                                              Clause [Merely $ VoteDatum voter winner position]]])
+                 | voter <- ballots,
+                   position <- positions],
+                -1)
+
 -- IRV related embeddings
 beats candidates ballots
        a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $

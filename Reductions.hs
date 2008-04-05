@@ -32,26 +32,25 @@ scoringProtocolManipulation s votes =
         positions = [0..length candidates-1]
         scoreList = s (fromIntegral $ length candidates)
     in (concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
-                manipulatorPositionalPositionSurjection manipulatorSet candidates positions]
+                manipulatorPositionalPositionSurjection manipulatorSet candidates positions] ++
+        concat
+        [outscores ballots positions scoreList winner loser $ \winnerOutscoresLoser ->
+         [Formula [Clause [neg $ winnerOutscoresLoser, Merely $ Eliminated 0 loser]]]
+          | winner <- candidates,
+            loser  <- delete winner candidates] ++
+        concat
+        [pluralizeEmbedding [outscores ballots positions scoreList d c | d <- delete c candidates]
+         $ \cOutscoredByOthers ->
+             [Formula [Clause $ [neg $ Merely $Eliminated 0 c] ++ cOutscoredByOthers]]
+         | c <- candidates]
        , \votes manipulators target ->
         count ballots (length votes + manipulators) ++
         nonManipulatorPositionalVotes votes voterSet candidates positions ++
-        -- Target wins. Since the reduction from ILP to SAT assumes
-        -- the inequality is <=, points are bad: points for opponents
-        -- are positive, and points for our target are negative.  The
-        -- target wins if the total is <= -1.
-        [Inequality ([( fromIntegral (scoreList!!position),
-                                     [Formula [Clause [Merely $ Counts voter],
-                                               Clause [Merely $ VoteDatum voter opponent position]]])
-                          | voter <- voterSet ++ manipulatorSet,
-                            position <- positions] ++
-                     [(-fromIntegral (scoreList!!position),
-                                     [Formula [Clause [Merely $ Counts voter],
-                                               Clause [Merely $ VoteDatum voter target position]]])
-                          | voter <- voterSet ++ manipulatorSet,
-                            position <- positions],
-                 -1)
-         | opponent <- delete target candidates])
+        -- Target candidate remains, with everyone else eliminated, and therefore wins
+        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 0 c]
+                  | c <- candidates]] ++
+        []
+       )
 
 pluralityWithRunoffManipulation manipulators votes =
     let voterSet = [1..length votes]

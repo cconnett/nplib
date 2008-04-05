@@ -1,12 +1,11 @@
 module ILPSATReduction where
 
 import ILPSAT
---import Embeddings
+import Embeddings
 
 import Data.Bits
 import Data.List
 import qualified Data.HashTable as HT
-import Embeddings
 
 import Debug.Trace
 import Utilities
