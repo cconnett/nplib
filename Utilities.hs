@@ -9,7 +9,7 @@ import qualified Data.Map as M
 import Debug.Trace
 import Test.QuickCheck
 
-debug = True
+debug = False
 myTrace = if debug then trace else flip const
 traceIt s = myTrace ("\nTRACEIT:" ++ show s) s
 

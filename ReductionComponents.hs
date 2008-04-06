@@ -95,13 +95,18 @@ eliminationBasics candidates rounds =
               | round <- tail $ init $ rounds, -- No eliminations in the first or last rounds.
                 candidate <- candidates]]
 
--- Every ballot must give a point to one candidate and only one candidate in all but the last round.
+-- Every ballot (that counts) must give a point to one candidate and
+-- only one candidate in all but the last round.
 firstPlacePoints candidates ballots rounds =
-        (concat [points candidates candidates [v] [r] $ \pointCsVR -> [Formula [Clause pointCsVR]]
+        (concat [points candidates candidates [v] [r] $
+                 \pointCsVR -> [Formula [Clause $ (neg $ Merely $ Counts v) : pointCsVR]]
                  | v <- ballots,
                    r <- init rounds]) ++
         (concat [point candidates a v r $ \pointAVR ->
                  point candidates b v r $ \pointBVR ->
+                 -- Giving a point to neither a nor b doesn't run
+                 -- afoul of this rule, so we don't need to check if
+                 -- the ballot counts.
                      [Formula [Clause [neg $ pointAVR, neg $ pointBVR]]]
                  | v <- ballots,
                    r <- init rounds,
@@ -128,7 +133,7 @@ outscores ballots positions scoreList winner loser =
                    position <- positions],
                 -1)
 
--- IRV related embeddings
+-- IRV and pluralityWithRunoff embeddings
 beats candidates ballots
        a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
                points candidates [b] ballots [r] $ \bPoints ->
@@ -146,6 +151,7 @@ beats candidates ballots
 points candidates cs vs rs = pluralizeEmbedding [point candidates c v r | c <- cs, v <- vs, r <- rs]
 point candidates c v r = embedConstraint ("point " ++ show r ++ " " ++ show c ++ " " ++ show v) $
                          conjoin $
+                         (Formula [Clause [Merely $ Counts v]]) :
                          (Formula [Clause [neg $ Merely $ Eliminated r c]]) :
                          ([Formula [Clause [Merely $ PairwiseDatum v c d, Merely $ Eliminated r d]]
                            | d <- delete c candidates])
@@ -179,8 +185,10 @@ fullShouldBeEliminated candidates ballots
 pairwiseVictory ballots c d =
     let tag = (show c ++ " defeats " ++ show d) in
     embedProblem tag (trans (fromIntegral $ hash tag) $
-                      Inequality ([(-1, propositionToProblem $ Merely $ PairwiseDatum v c d) | v <- ballots] ++
-                                  [( 1, propositionToProblem $ Merely $ PairwiseDatum v d c) | v <- ballots], -1))
+                      Inequality ([(-1, [Formula [Clause [Merely $ Counts v],
+                                                  Clause [Merely $ PairwiseDatum v c d]]]) | v <- ballots] ++
+                                  [( 1, [Formula [Clause [Merely $ Counts v],
+                                                  Clause [Merely $ PairwiseDatum v d c]]]) | v <- ballots], -1))
 pairwiseTie ballots c d =
     embedProblem (show c ++ " ties " ++ show d) $
     pairwiseVictory ballots c d $ \cBeatsD ->
@@ -188,6 +196,8 @@ pairwiseTie ballots c d =
     [Formula [Clause [neg cBeatsD], Clause [neg dBeatsC]]]
 
 copelandScoreBetter candidates ballots c d =
+    let tag = (show c ++ " has a better copeland score than " ++ show d) in
+    embedProblem tag $
     pluralizeEmbedding [pairwiseVictory ballots d e | e <- delete d candidates] $ \dVics ->
     pluralizeEmbedding [pairwiseVictory ballots c e | e <- delete c candidates] $ \cVics ->
     pluralizeEmbedding [pairwiseTie     ballots d e | e <- delete d candidates] $ \dTies ->
