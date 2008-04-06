@@ -6,6 +6,8 @@ OPTFLAGS=-O -optc-O1
 
 FLAGS=${BASEFLAGS} ${THREADED} ${PROFILEFLAGS} ${COVERAGEFLAGS} ${OPTFLAGS}
 
+GHC=/tmp/ghc-6.8.2/bin/ghc
+
 #all: BruteForce GenElections Summarize Solve Tests
 all: Solve
 
@@ -13,16 +15,16 @@ clean:
 	rm -rf *.o BruteForce GenElections Solve Summarize Tests *.tix .hpc
 
 BruteForce: BruteForce.hs Elections.hs Manipulation.hs Voting.hs
-	ghc ${FLAGS} --make BruteForce.hs -o BruteForce
+	${GHC} ${FLAGS} --make BruteForce.hs -o BruteForce
 
 GenElections: GenElections.hs Elections.hs Voting.hs RunGenIO.hs
-	ghc ${FLAGS} --make GenElections.hs -o GenElections\
+	${GHC} ${FLAGS} --make GenElections.hs -o GenElections\
 
 Summarize: Summarize.hs Elections.hs Voting.hs
-	ghc ${FLAGS} --make Summarize.hs -o Summarize
+	${GHC} ${FLAGS} --make Summarize.hs -o Summarize
 
 Solve: *.hs
-	ghc ${FLAGS} --make Solve.hs -o Solve
+	${GHC} ${FLAGS} --make Solve.hs -o Solve
 
 Tests: *.hs
-	ghc ${FLAGS} --make Tests.hs -o Tests
+	${GHC} ${FLAGS} --make Tests.hs -o Tests
