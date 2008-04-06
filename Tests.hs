@@ -1,9 +1,8 @@
 module Main where
 
 import Solvers
-import ZChaffSolver
-import GLPKSolver
 import BruteForceSolver
+import SatSolvers
 
 import ILPSAT
 import ILPSATReduction
@@ -49,9 +48,8 @@ prop_trivialIneqs (Formula f) = False ==> False
 
 prop_assignmentWorks :: Constraint (Proposition Var) -> Property
 prop_assignmentWorks i@(Inequality (summands, b)) =
-    --let cleanI = Inequality (map (second normalizeProposition) summands, b) in
     let (satisfiable, trueVars) = solveA mode [cleanInequality i] in
-    satisfiable ==> (sum $ mapMaybe ((flip M.lookup) (M.fromList (map flop summands))) trueVars) <= b
+    satisfiable ==> (sum $ map ((M.fromList (map (flop . (second problemToProposition)) summands)) M.!) trueVars) <= b
 
 prop_assignmentWorks f@(Formula clauses) =
     let (satisfiable, trueVars) = solveA mode [f] in
@@ -149,6 +147,7 @@ calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates | r <- [0..
                              filter (\elimination -> eCandidate elimination == c && eRound elimination == r) $
                              filter isElimination tvd
 
+ {-
 prop_nestedInequalities (constraints' :: [Constraint Var]) =
     let constraints = map (\(c, i) -> fmap (\var -> (var, i)) c) (zip constraints' [0..]) in
     length constraints <= 10 ==>
@@ -157,16 +156,18 @@ prop_nestedInequalities (constraints' :: [Constraint Var]) =
           (--traceIt $
            solve ZChaff $
            embedConstraints (map show constraints) constraints $ \surrogates ->
-               [Inequality ([(-1, surrogate) | surrogate <- surrogates], -numSatisfiable)])
+               [Inequality ([(-1, propositionToProblem surrogate)
+                                 | surrogate <- surrogates], -numSatisfiable)])
           && (--traceIt $
               not $
           (solve ZChaff $
            embedConstraints (map show constraints) constraints $ \surrogates ->
-               [Inequality ([(-1, surrogate) | surrogate <- surrogates], -(numSatisfiable+1))]))
-                                
+               [Inequality ([(-1, propositionToProblem surrogate)
+                                 | surrogate <- surrogates], -(numSatisfiable+1))]))
+-}
 getSummary = do
   election <- e
-  let solver = possibleWinnersBySolverDebug ZChaff copelandManipulation election
+  let solver = possibleWinnersBySolverDebug RSat (scoringProtocolManipulation (\n -> [n-1,n-2..0])) election
   let (sat, trueProps) = solver 0 election (Candidate 2)
 
   let summary = summarizeElection trueProps []

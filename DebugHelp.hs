@@ -8,7 +8,7 @@ import Utilities
 import Debug.Trace
 import Data.List
 import Solvers
-import ZChaffSolver
+import SatSolvers
 
 allProps problem = allVars $ conjoin $ toSAT problem
 

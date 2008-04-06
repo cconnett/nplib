@@ -35,5 +35,5 @@ varSet (TopFormula formula) =
     S.fromList $
      map normalizeProposition $
      concatMap fromClause $ formula
-varSet (Inequality ineq) = S.fromList $ map snd $ fst ineq
+varSet (Inequality ineq) = S.fromList $ map problemToProposition $ map snd $ fst ineq
 varSubsets i@(Inequality ineq) = sortNub $ map auxVarSet $ filter isAux $ (allVars (conjoin $ toSAT [i]))

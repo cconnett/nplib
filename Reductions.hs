@@ -11,7 +11,7 @@ import Data.List
 
 import Utilities
 
-type MPR a = Int -> [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))
+type MPR a = [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Int -> Candidate a -> Problem (VoteDatum a))
 instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
     readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
@@ -22,34 +22,38 @@ instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\ncopeland\n"
 
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
-                               (k -> [k]) -> Int -> [Vote a] ->
-                               (Problem (VoteDatum a), [Vote a] -> Candidate a -> Problem (VoteDatum a))
-scoringProtocolManipulation s manipulators votes =
+                               (k -> [k]) -> [Vote a] ->
+                               (Problem (VoteDatum a), [Vote a] -> Int -> Candidate a -> Problem (VoteDatum a))
+scoringProtocolManipulation s votes =
     let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..manipulators]
+        manipulatorSet = map (+length votes) [1..length votes + 1]
+        ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
         positions = [0..length candidates-1]
-        scoreList = s (fromIntegral $ length candidates)
-    in (concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
-                manipulatorPositionalPositionSurjection manipulatorSet candidates positions]
-       , \votes target ->
+        scoreList = s (fromIntegral $ length candidates) in
+    (concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
+             manipulatorPositionalPositionSurjection manipulatorSet candidates positions] ++
+     concat
+     [outscores ballots positions scoreList winner loser $ \winnerOutscoresLoser ->
+      [Formula [Clause [neg $ winnerOutscoresLoser, Merely $ Eliminated 0 loser]]]
+          | winner <- candidates,
+            loser  <- delete winner candidates] ++
+     concat
+     [pluralizeEmbedding [outscores ballots positions scoreList d c | d <- delete c candidates]
+     $ \cOutscoredByOthers ->
+         [Formula [Clause $ [neg $ Merely $Eliminated 0 c] ++ cOutscoredByOthers]]
+             | c <- candidates]
+    , \votes manipulators target ->
+        count ballots (length votes + manipulators) ++
         nonManipulatorPositionalVotes votes voterSet candidates positions ++
-        -- Target wins. Since the reduction from ILP to SAT assumes
-        -- the inequality is <=, points are bad: points for opponents
-        -- are positive, and points for our target are negative.  The
-        -- target wins if the total is <= -1.
-        [Inequality ([( fromIntegral (scoreList!!position), Merely $ VoteDatum voter opponent position)
-                          | voter <- voterSet ++ manipulatorSet,
-                            position <- positions] ++
-                     [(-fromIntegral (scoreList!!position), Merely $ VoteDatum voter target position)
-                          | voter <- voterSet ++ manipulatorSet,
-                            position <- positions],
-                 -1)
-         | opponent <- delete target candidates])
+     -- Target candidate remains, with everyone else eliminated, and therefore wins
+        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 0 c]
+                      | c <- candidates]]
+    )
 
-pluralityWithRunoffManipulation manipulators votes =
+pluralityWithRunoffManipulation votes =
     let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..manipulators]
+        manipulatorSet = map (+length votes) [1..length votes + 1]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
         rounds = [0,1,2] in
@@ -65,9 +69,8 @@ pluralityWithRunoffManipulation manipulators votes =
      [let cAdvancesTag = (show c ++ " advances to round 1")
           ineqNumber = fromIntegral $ hash cAdvancesTag in
       losses candidates ballots 0 c $ \cLosses ->
-      embedProblem cAdvancesTag (trans ineqNumber $ Inequality ([(1, loss) | loss <- cLosses], 1)) $ \cAdvances ->
-       [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)] ++
-       []
+      embedProblem cAdvancesTag (trans ineqNumber $ Inequality ([(1, propositionToProblem loss) | loss <- cLosses], 1)) $ \cAdvances ->
+       [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)]
       | c <- candidates] ++
      concat
      [let cAdvancesTag = (show c ++ " advances to round 2") in
@@ -76,16 +79,17 @@ pluralityWithRunoffManipulation manipulators votes =
       embedFormula cAdvancesTag (Formula [Clause [neg loss] | loss <- cLosses]) $ \cAdvances ->
       [equivalent cAdvances (neg $ Merely $ Eliminated 2 c)]
           | c <- candidates]
-     , \votes target ->
-         nonManipulatorPairwiseVotes votes voterSet candidates ++
+    , \votes manipulators target ->
+        count ballots (length votes + manipulators) ++
+        nonManipulatorPairwiseVotes votes voterSet candidates ++
      -- Target candidate still remains in round 2, with everyone else eliminated, and therefore wins.
-         [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 2 c]
-                   | c <- candidates]]
+        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 2 c]
+                      | c <- candidates]]
     )
 
-irvManipulation manipulators votes =
+irvManipulation votes =
     let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..manipulators]
+        manipulatorSet = map (+length votes) [1..length votes + 1]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
         positions = [0..length candidates - 1]
@@ -119,20 +123,35 @@ irvManipulation manipulators votes =
           | c <- candidates,
             r <- [0..length candidates - 2 {-we only perform eliminations up to the last round-}]]
 
-    , \votes target ->
+    , \votes manipulators target ->
+        count ballots (length votes + manipulators) ++
         nonManipulatorPairwiseVotes votes voterSet candidates ++
      -- Target candidate still remains after |C| - 1 rounds, with everyone else eliminated, and therefore wins
         [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated (length candidates - 1) c]
-                  | c <- candidates ]])
+                      | c <- candidates ]]
+    )
 
-copelandManipulation manipulators votes =
+copelandManipulation votes =
     let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..manipulators]
+        manipulatorSet = map (+length votes) [1..length votes + 1]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes in
     (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
-             manipulatorPairwiseBeatsTotal manipulatorSet candidates]
-    , \votes target ->
+             manipulatorPairwiseBeatsTotal manipulatorSet candidates] ++
+     concat
+     [copelandScoreBetter candidates ballots winner loser $ \winnerOutscoresLoser ->
+      [Formula [Clause [neg $ winnerOutscoresLoser, Merely $ Eliminated 0 loser]]]
+          | winner <- candidates,
+            loser  <- delete winner candidates] ++
+     concat
+     [pluralizeEmbedding [copelandScoreBetter candidates ballots d c | d <- delete c candidates]
+     $ \cOutscoredByOthers ->
+         [Formula [Clause $ [neg $ Merely $Eliminated 0 c] ++ cOutscoredByOthers]]
+             | c <- candidates]
+    , \votes manipulators target ->
+        count ballots (length votes + manipulators) ++
         nonManipulatorPairwiseVotes votes voterSet candidates ++
-        concat [copelandScoreBetter candidates ballots target d | d <- delete target candidates]
+     -- Target candidate remains, with everyone else eliminated, and therefore wins
+        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 0 c]
+                      | c <- candidates]]
     )

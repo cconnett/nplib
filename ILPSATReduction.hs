@@ -1,7 +1,7 @@
 module ILPSATReduction where
 
 import ILPSAT
---import Embeddings
+import Embeddings
 
 import Data.Bits
 import Data.List
@@ -9,7 +9,7 @@ import qualified Data.HashTable as HT
 
 import Debug.Trace
 import Utilities
-    
+
 -- Conversion from ILP to SAT, ala Warners, Joost, "A Linear-Time
 -- Transformation of Linear Inequalities into Conjunctive Normal
 -- Form."  The resulting Constraint is a Formula.
@@ -19,43 +19,26 @@ toSAT p = concatMap convert (zip [0..] p)
           convert (i, TopFormula formula) = [TopFormula formula]
           convert (i, Inequality inequality) = trans i (Inequality inequality)
 
--- Conversion from SAT to ILP.  SAT is a special case of ILP, so the
--- reduction is straightforward.
-toILP :: Problem a -> [Constraint a]
-toILP p =
-    -- split problem into inequalities and one big cnf formula
-    let (priorInequalities, priorFormulas) = partition isInequality p
-        rawFormula = concat $ map (\(Formula formula) -> formula) priorFormulas
-    in
-      priorInequalities ++ map clauseToInequality rawFormula
-
--- When converting SAT into ILP
-clauseToInequality :: Clause a -> Constraint a
-clauseToInequality clause = Inequality $
-    -- negative literals with coeff -1 each
-    ([(-1, normalizeProposition proposition) | proposition <- fromClause clause, isPos proposition] ++ 
-     -- positive literals with coeff 1 each
-     [( 1, normalizeProposition proposition) | proposition <- fromClause clause, isNeg proposition], 
-     -- b
-     -1 + (length $ filter isNeg (fromClause clause)))
-
 -- Warners' [War98] primary function --- converts an ILP inequality to a SAT formula
 trans :: Show a => Int -> Constraint a -> Problem a
-trans ineqNumber it@(Inequality (coeffsAndProps, b)) =
+trans ineqNumber it@(Inequality (summands, b)) =
     --trace ("transing " ++ show it ++ " yields") $
     --traceIt $
+    let summands' = filter ((/=0) . fst) summands
+        problems = map snd summands'
+        coeffs = map fst summands'
+        newB = b - (sum $ filter (<0) $ coeffs)
+    -- To account for negative coefficients, increase b by their
+    -- absolute sum.  Trans-ing functions will emit (neg variable)
+    -- instead of variable when they detect the negative coefficient.
+    in
+      pluralizeEmbedding [embedProblem ("auto-embedding " ++ show pr) pr | pr <- problems] $
+       \props ->
+           let finalSummands = zip coeffs props in
             [pushTL $
-             transLHS ineqNumber nonTrivialSummands,
-             transRHS ineqNumber nonTrivialProps newB (sum $ map abs coeffs)
+             transLHS ineqNumber finalSummands,
+             transRHS ineqNumber props newB (sum $ map abs coeffs)
             ]
-    where newB = b - (sum $ filter (<0) $ coeffs)
-          -- To account for negative coefficients, increase b by their
-          -- absolute sum.  Trans-ing functions will emit (neg
-          -- variable) instead of variable when they detect the
-          -- negative coefficient.
-          nonTrivialSummands = filter ((/=0) . fst) coeffsAndProps
-          coeffs = map fst coeffsAndProps
-          nonTrivialProps = map snd nonTrivialSummands
 
 transLHS :: Show a => Int -> [(Int, Proposition a)] -> Constraint a
 transLHS ineqNumber [] = Formula []

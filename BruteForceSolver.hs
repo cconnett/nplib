@@ -34,7 +34,7 @@ satisfies varMap p sol = all ((flip (satisfies1 varMap)) sol) p
 satisfies1 :: (Ord a) => VM a -> Constraint a -> Int -> Bool
 satisfies1 varMap (Formula f) sol = all ((flip (satisfiesClause varMap)) sol) f
 satisfies1 varMap (Inequality (lhs, rhs)) sol = (sum $ uncurry (zipWith (*)) $ unzip lhs') <= rhs
-    where lhs' = map (second (fromEnum.(testBit sol).fromJust.((flip M.lookup) varMap))) lhs
+    where lhs' = map (second (fromEnum . fst . bruteForceProblem)) lhs
 
 satisfiesClause :: (Ord a) => VM a -> Clause a -> Int -> Bool
 satisfiesClause varMap (Clause []) sol = True
