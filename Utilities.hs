@@ -8,6 +8,7 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 import Debug.Trace
 import Test.QuickCheck
+import Foreign (unsafePerformIO)
 
 debug = False
 myTrace = if debug then trace else flip const
@@ -83,3 +84,12 @@ mergeBy f (a:as) (b:bs)
     | otherwise = b:(mergeBy f (a:as) bs)
 
 sortNub = S.toList . S.fromList
+
+permCache filename thunk =
+    unsafePerformIO $ do
+      result <- catch
+                ((liftM read) $ readFile filename)
+                (\e -> do
+                   writeFile filename (show thunk)
+                   return thunk)
+      return result
