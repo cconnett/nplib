@@ -107,7 +107,7 @@ rsatRun dimacs = do
   hClose handle
   (inp, result, err, satProcess) <-
       runInteractiveProcess (solversHome ++ "rsat_2.01_release/rsat")
-                   [tmpname, "-s"]
+                   [tmpname, "-s", "-t", "360"]
                    Nothing Nothing
   hClose inp
   hClose err
@@ -128,5 +128,5 @@ rsatParse varMapF answer =
         assignments = map read (init assignmentStrings)
         varMapR = M.fromList $ map (\(a,b)->(b,a)) $
                   M.toList $ varMapF
-    in (not $ answer =~ "UNSATISFIABLE",
+    in (not $ answer =~ "(UNSATISFIABLE)|(UNKNOWN)",
         mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments)
