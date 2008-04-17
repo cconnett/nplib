@@ -8,6 +8,7 @@ import ILPSAT
 import SatSolvers
 --import GLPKSolver
 import System
+import System.IO
 import Voting
 import Elections
 import Debug.Trace
@@ -21,6 +22,7 @@ satSolver = RSat
 
 main = do
   args <- getArgs
+  hSetBuffering stdin LineBuffering
   if not $ length args `elem` [3,4]
      then error "Solve method rule electionsFile [startNo]"
      else do
