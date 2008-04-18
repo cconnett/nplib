@@ -23,7 +23,15 @@ nub' n list
 
 prop_nub'_nub list = nub list == nub' (length list) list
 prop_nub'_subset list = length list >= 3 ==> S.fromList (nub' 3 list) `S.isSubsetOf` S.fromList list
-            
+
+filter3 pred3 [] = ([], [])
+filter3 pred3 (a:as) =
+    case pred3 a of
+      Nothing -> (y,a:m)
+      Just True -> (a:y,m)
+      Just False -> (y,m)
+    where (y,m) = filter3 pred3 as
+
 -- Find the first item in the given search space that satisfies the
 -- predicate p, by unbounded binary search.  Search space may be
 -- infinite.  The predicate must be unsatisfiable up to some point in
