@@ -25,8 +25,8 @@ import Control.Exception
 import Debug.Trace
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
-findTwoWinners :: (Eq a) => Rule a -> Int -> [Vote a] -> [Candidate a]
-findTwoWinners rule manips votes = filter canWin candidates
+findTwoWinners :: (Eq a) => Rule a -> Int -> [Vote a] -> ([Candidate a], [Candidate a])
+findTwoWinners rule manips votes = (filter canWin candidates, [])
     where candidates = extractCandidates votes
           canWin candidate = [candidate] == (rule candidates $
                              votes ++ (replicate manips $
@@ -35,15 +35,16 @@ findTwoWinners rule manips votes = filter canWin candidates
                     leader = head $ rule candidates votes -- arbitrary leader if tie exists
 
 -- Brute force crack of possible winners
-possibleWinnersByBruteForce :: Eq a => Rule a -> Int -> [Vote a] -> [Candidate a]
+possibleWinnersByBruteForce :: Eq a => Rule a -> Int -> [Vote a] -> ([Candidate a], [Candidate a])
 possibleWinnersByBruteForce rule manipulators votes
-    | manipulators > length votes = candidates
+    | manipulators > length votes = (candidates, [])
     -- more manips than candidates: all candidates can be made to win!
     -- (in reasonable voting systems, assumed)
     | otherwise = myTrace ("brute forcing: " ++ show manipulators) $
-                  nub' (length candidates) $ concat $
-                  map (uniqueWinner.(rule candidates).(++votes).(manipulatorVotes candidates)) $
-                  manipulatorVoteRankWeights manipulators (factorial $ length candidates)
+                  (nub' (length candidates) $ concat $
+                   map (uniqueWinner.(rule candidates).(++votes).(manipulatorVotes candidates)) $
+                   manipulatorVoteRankWeights manipulators (factorial $ length candidates),
+                   [])
     where candidates = extractCandidates votes
 
 uniqueWinner [winner] = [winner]
@@ -69,7 +70,7 @@ unrank objects rank = (take pos rest) ++ [head objects] ++ (drop pos rest)
 factorial n = product [2..n]
 
 possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> [Vote a] ->
-                           (Int -> [Vote a] -> [Candidate a])
+                           (Int -> [Vote a] -> ([Candidate a], [Candidate a]))
 possibleWinnersBySolver solver manipulationProblemEr election =
     let numVotes = length election
         candidates = extractCandidates election
@@ -81,7 +82,7 @@ possibleWinnersBySolver solver manipulationProblemEr election =
             myTrace ("sat solving: " ++ show manipulators) $
             let part2 = snd $ manipulationProblemEr election
                 solveRest = startPartial solver cache in
-            filter (\target -> (fst . solveRest) (part2 votes manipulators target)) candidates
+            filter3 (\target -> (fst . solveRest) (part2 votes manipulators target))candidates
     in realSolver
 possibleWinnersBySolverDebug solver manipulationProblemEr election =
     let numVotes = length election
@@ -94,7 +95,7 @@ possibleWinnersBySolverDebug solver manipulationProblemEr election =
             myTrace (show manipulators) $
             let part2 = snd $ manipulationProblemEr election
                 solveRest = startPartial solver cache
-            in (\target -> solveRest (part2 votes manipulators target))
+            in filter3 (\target -> (fst . solveRest) (part2 votes manipulators target)) candidates
     in realSolver
 
 hybridSolver nullVotes solver1 solver2 = internalSolver
@@ -118,11 +119,17 @@ hybridSolver nullVotes solver1 solver2 = internalSolver
                 return $ isNothing computedResult
 
 minimumManipulators :: (Ord a) =>
-                       (Int -> [Vote a] -> [Candidate a]) -> [Vote a] -> [Int]
+                       (Int -> [Vote a] -> ([Candidate a], [Candidate a])) ->
+                       [Vote a] -> ([Int], [Int])
 minimumManipulators possibleWinners election =
-    take (length candidates) $ minToWin 1 0
+    (take (length candidates) $ minToWinLower 1 0,
+     take (length candidates) $ minToWinUpper 1 0)
     where candidates = extractCandidates election
-          minToWin n lowerBound = value : (minToWin (n+1) value)
-              where value = fromJust $ findFast pred [lowerBound..]
-                    pred m = n <= (length $ possibleWinnersCache !! m)
-                    possibleWinnersCache = map ((flip possibleWinners) election) [0..]
+          possibleWinnersCache = map ((flip possibleWinners) election) [0..]
+          minToWinLower n prevCutoff = value : (minToWinLower (n+1) value)
+              where value = fromJust $ findFast pred [prevCutoff..]
+                    pred m = n <= (length $ concat $ [fst $ possibleWinnersCache !! m,
+                                                      snd $ possibleWinnersCache !! m])
+          minToWinUpper n prevCutoff = value : (minToWinUpper (n+1) value)
+              where value = fromJust $ findFast pred [prevCutoff..]
+                    pred m = n <= (length $ fst $ possibleWinnersCache !! m)

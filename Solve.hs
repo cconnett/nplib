@@ -40,6 +40,10 @@ main = do
                                           (possibleWinnersBySolver satSolver (read (args !! 1)) (head elections))
                                 _     -> error "Supported methods are \nbf\nf2w\nsat\nhyb"
        sequence $
-          [do let theMinimumManipulators = minimumManipulators winnerCalculator election
-              putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulators)
+          [do let (theMinimumManipulatorsLower, theMinimumManipulatorsUpper) =
+                      minimumManipulators winnerCalculator election
+              putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulatorsLower)
+              if theMinimumManipulatorsUpper /= theMinimumManipulatorsLower then
+                  putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulatorsUpper) else
+                  return ()
            | (electionNo, election) <- zip [startNo..] (drop (startNo - 1) elections)]

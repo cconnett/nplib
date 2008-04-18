@@ -23,7 +23,7 @@ solversHome = "/home/stu2/s1/cxc0117/thesis/sat.x86/"
 class SatSolver ss where
     run :: ss -> String -> IO String
     parse :: (Ord a, Read b, Integral b) =>
-             ss -> VarMap a b -> String -> (Bool, [Proposition a])
+             ss -> VarMap a b -> String -> (Maybe Bool, [Proposition a])
 
 data ZChaff = ZChaff
 instance Solver ZChaff where
@@ -54,7 +54,7 @@ toDIMACS' varMap clauses =
 
 {-# NOINLINE satA #-}
 satA :: (SatSolver ss, Show a, Ord a, Read b, Integral b) =>
-        ss -> ([[b]], VarMap a b) -> Problem a -> (Bool, [Proposition a])
+        ss -> ([[b]], VarMap a b) -> Problem a -> (Maybe Bool, [Proposition a])
 satA ss (cnf1, varMap1) =
   let closure problem2 =
           let formula2 = conjoin $ toSAT (detrivialize problem2)
@@ -90,7 +90,7 @@ zchaffRun dimacs = do
   return readResult
 
 -- Parse the output of zchaff into answers about the formula.
-zchaffParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Bool, [Proposition a])
+zchaffParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
 zchaffParse varMapF answer =
     let assignmentLine = (lines answer) !! 5
         answerLine = last $ lines answer
@@ -98,7 +98,7 @@ zchaffParse varMapF answer =
         assignments = map read (take (length assignmentStrings - 4) $ assignmentStrings)
         varMapR = M.fromList $ map (\(a,b)->(b,a)) $
                   M.toList $ varMapF
-    in (not $ answer =~ "UNSAT",
+    in (Just $ not $ answer =~ "UNSAT",
         mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments)
 
 rsatRun dimacs = do
@@ -120,7 +120,7 @@ rsatRun dimacs = do
   return readResult
 
 -- Parse the output of rsat into answers about the formula.
-rsatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Bool, [Proposition a])
+rsatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
 rsatParse varMapF answer =
     let assignmentLine = (lines answer) !! 2
         answerLine = last $ lines answer
@@ -128,5 +128,6 @@ rsatParse varMapF answer =
         assignments = map read (init assignmentStrings)
         varMapR = M.fromList $ map (\(a,b)->(b,a)) $
                   M.toList $ varMapF
-    in (not $ answer =~ "(UNSATISFIABLE)|(UNKNOWN)",
+    in (if answer =~ "UNKNOWN" then Nothing else Just $
+        not $ answer =~ "UNSATISFIABLE",
         mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments)
