@@ -122,7 +122,7 @@ rsatRun dimacs = do
 -- Parse the output of rsat into answers about the formula.
 rsatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
 rsatParse varMapF answer =
-    let assignmentLine = (lines answer) !! 1
+    let assignmentLine = (lines answer) !! 2
         answerLine = last $ lines answer
         assignmentStrings = words assignmentLine
         assignments = map read (init assignmentStrings)
