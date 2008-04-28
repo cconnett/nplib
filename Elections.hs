@@ -62,7 +62,7 @@ normal mean stddev = do
 spatialVote :: (Eq a) => Int -> [[Double]] -> [Candidate a] -> Gen (Vote a)
 spatialVote issues candidatePositions candidates = do
   voter <- sequence $ replicate issues $ normal 0 1
-  let distance voter candidate = sqrt $ sum $ zipWith (-) voter (position candidate)
+  let distance voter candidate = sqrt $ sum $ map (^2) $ zipWith (-) voter (position candidate)
       position candidate       = fromJust $ lookup candidate positionMap
       positionMap              = zip candidates candidatePositions
   return $ Vote $ sortBy (comparing (distance voter)) candidates
