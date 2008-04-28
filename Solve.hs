@@ -42,8 +42,7 @@ main = do
        sequence $
           [do let (theMinimumManipulatorsLower, theMinimumManipulatorsUpper) =
                       minimumManipulators winnerCalculator election
-              putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulatorsLower)
-              if theMinimumManipulatorsUpper /= theMinimumManipulatorsLower then
-                  putStrLn $ (show electionNo) ++ ": " ++ (show theMinimumManipulatorsUpper) else
-                  return ()
+              putStrLn $ (show electionNo) ++ " lower: " ++ (show theMinimumManipulatorsLower)
+              putStrLn $ (show electionNo) ++ " upper: " ++ (show theMinimumManipulatorsUpper)
+              hFlush stdout
            | (electionNo, election) <- zip [startNo..] (drop (startNo - 1) elections)]
