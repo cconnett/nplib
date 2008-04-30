@@ -6,6 +6,7 @@ import ILPSAT
 import ILPSATReduction
 import Embeddings
 import Hash
+import Data.Ratio
 
 import Data.List
 
@@ -195,7 +196,9 @@ pairwiseTie ballots c d =
     pairwiseVictory ballots d c $ \dBeatsC ->
     [Formula [Clause [neg cBeatsD], Clause [neg dBeatsC]]]
 
-copelandScoreBetter candidates ballots c d =
+copelandScoreBetter tieValue candidates ballots c d =
+    let wt = numerator tieValue
+        ww = denominator tieValue in
     let tag = (show c ++ " has a better copeland score than " ++ show d) in
     embedProblem tag $
     pluralizeEmbedding [pairwiseVictory ballots d e | e <- delete d candidates] $ \dVics ->
@@ -203,8 +206,8 @@ copelandScoreBetter candidates ballots c d =
     pluralizeEmbedding [pairwiseTie     ballots d e | e <- delete d candidates] $ \dTies ->
     pluralizeEmbedding [pairwiseTie     ballots c e | e <- delete c candidates] $ \cTies ->
     trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
-    Inequality ([( 2, propositionToProblem dVic) | dVic <- dVics] ++
-                [(-2, propositionToProblem cVic) | cVic <- cVics] ++
-                [( 1, propositionToProblem dTie) | dTie <- dTies] ++
-                [(-1, propositionToProblem cTie) | cTie <- cTies],
+    Inequality ([( ww, propositionToProblem dVic) | dVic <- dVics] ++
+                [(-ww, propositionToProblem cVic) | cVic <- cVics] ++
+                [( wt, propositionToProblem dTie) | dTie <- dTies] ++
+                [(-wt, propositionToProblem cTie) | cTie <- cTies],
                  -1)

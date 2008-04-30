@@ -6,6 +6,7 @@ import ILPSATReduction
 import ReductionComponents
 import Hash
 import Embeddings
+import Data.Ratio
 
 import Data.List
 
@@ -18,7 +19,7 @@ instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
     readsPrec _ "irv" = [(irvManipulation, "")]
-    readsPrec _ "copeland" = [(copelandManipulation, "")]
+    readsPrec _ "copeland" = [(copelandManipulation (1%2), "")]
     readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\ncopeland\n"
 
 scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
@@ -131,7 +132,7 @@ irvManipulation votes =
                       | c <- candidates ]]
     )
 
-copelandManipulation votes =
+copelandManipulation tieValue votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..length votes + 1]
         ballots = voterSet ++ manipulatorSet
@@ -139,12 +140,12 @@ copelandManipulation votes =
     (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates] ++
      concat
-     [copelandScoreBetter candidates ballots winner loser $ \winnerOutscoresLoser ->
+     [copelandScoreBetter tieValue candidates ballots winner loser $ \winnerOutscoresLoser ->
       [Formula [Clause [neg $ winnerOutscoresLoser, Merely $ Eliminated 0 loser]]]
           | winner <- candidates,
             loser  <- delete winner candidates] ++
      concat
-     [pluralizeEmbedding [copelandScoreBetter candidates ballots d c | d <- delete c candidates]
+     [pluralizeEmbedding [copelandScoreBetter tieValue candidates ballots d c | d <- delete c candidates]
      $ \cOutscoredByOthers ->
          [Formula [Clause $ [neg $ Merely $Eliminated 0 c] ++ cOutscoredByOthers]]
              | c <- candidates]
