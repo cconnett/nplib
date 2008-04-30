@@ -42,7 +42,7 @@ instance SatSolver RSat where
 -- Conversion of Problem instances to DIMACS (CNF-SAT) formats.
 toDIMACS varMap (Formula clauses) = toDIMACS' varMap clauses
 toDIMACS varMap (TopFormula clauses) = toDIMACS' varMap clauses
-toDIMACS' varMap clauses =
+toDIMACS' varMap clauses = id $!
      [map transformProposition $ fromClause clause
           | clause <- clauses]
         where transformProposition (Not p) = -(transformProposition p)
