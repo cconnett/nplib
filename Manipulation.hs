@@ -80,9 +80,10 @@ possibleWinnersBySolver solver manipulationProblemEr election =
                 in (toDIMACS vm (Formula clauses), vm) in
     let realSolver manipulators votes =
             myTrace ("sat solving: " ++ show manipulators) $
-            let part2 = snd $ manipulationProblemEr election
+            let part2 = snd $! manipulationProblemEr election
                 solveRest = startPartial solver cache in
-            filter3 (\target -> (fst . solveRest) (part2 votes manipulators target))candidates
+            if manipulators > numVotes then (candidates, []) else
+            filter3 (\target -> (fst . solveRest) $! (part2 votes manipulators target)) candidates
     in realSolver
 possibleWinnersBySolverDebug solver manipulationProblemEr election =
     let numVotes = length election
@@ -94,8 +95,9 @@ possibleWinnersBySolverDebug solver manipulationProblemEr election =
     let realSolver manipulators votes =
             myTrace (show manipulators) $
             let part2 = snd $ manipulationProblemEr election
-                solveRest = startPartial solver cache
-            in filter3 (\target -> (fst . solveRest) (part2 votes manipulators target)) candidates
+                solveRest = startPartial solver cache in
+            if manipulators > numVotes then (candidates, []) else
+            filter3 (\target -> (fst . solveRest) (part2 votes manipulators target)) candidates
     in realSolver
 
 hybridSolver nullVotes solver1 solver2 = internalSolver
