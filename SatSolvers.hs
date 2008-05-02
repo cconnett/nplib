@@ -107,7 +107,7 @@ rsatRun dimacs = do
   hClose handle
   (inp, result, err, satProcess) <-
       runInteractiveProcess (solversHome ++ "rsat_2.01_release/rsat")
-                   [tmpname, "-s", "-t", "360"]
+                   [tmpname, "-s", "-t", "60"]
                    Nothing Nothing
   hClose inp
   hClose err
