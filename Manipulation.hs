@@ -15,6 +15,7 @@ import VarMapping
 import Hash
 import Test.QuickCheck
 import qualified Data.Set as S
+import qualified Data.Map as M
 import Solvers
 import Maybe
 import SatSolvers
@@ -74,28 +75,44 @@ possibleWinnersBySolver :: (Show a, Ord a, Solver s) => s -> MPR a -> [Vote a] -
 possibleWinnersBySolver solver manipulationProblemEr election =
     let numVotes = length election
         candidates = extractCandidates election
-        cache = let clauses = sortNub $ fromFormula $
+        part1 = let clauses = sortNub $ fromFormula $
                               conjoin (fst $ manipulationProblemEr election)
                     vm = varMap clauses
                 in (toDIMACS vm (Formula clauses), vm) in
+    let statefulCache = unsafePerformIO $ newMVar (M.empty) in
     let realSolver manipulators votes =
             myTrace ("sat solving: " ++ show manipulators) $
             let part2 = snd $! manipulationProblemEr election
-                solveRest = startPartial solver cache in
-            if manipulators > numVotes then (candidates, []) else
-            filter3 (\target -> (fst . solveRest) $! (part2 votes manipulators target)) candidates
+                solveRest = startPartial solver part1
+                candidateSolver votes manipulators target = unsafePerformIO $ do
+                  cache <- takeMVar statefulCache
+                  let ans = case cache of
+                        _ | any (\k -> M.findWithDefault False (votes, k, target) cache)
+                                [manipulators, manipulators - 1 .. 0] -> Just True
+                        _ | not $ all (\k -> M.findWithDefault True (votes, k, target) cache)
+                                       [manipulators .. numVotes + 1] -> Just False
+                        otherwise -> (fst . solveRest) $! (part2 votes manipulators target)
+                  putMVar statefulCache
+                              (case ans of
+                                 Nothing -> cache
+                                 Just bool -> M.insert (votes, manipulators, target) bool cache)
+                  return ans
+            in
+            if manipulators > numVotes then
+                (candidates, []) else
+                filter3 (candidateSolver votes manipulators) candidates
     in realSolver
 possibleWinnersBySolverDebug solver manipulationProblemEr election =
     let numVotes = length election
         candidates = extractCandidates election
-        cache = let clauses = sortNub $ fromFormula $
+        part1 = let clauses = sortNub $ fromFormula $
                               conjoin (fst $ manipulationProblemEr election)
                     vm = varMap clauses
                 in (toDIMACS vm (Formula clauses), vm) in
     let realSolver manipulators votes =
             myTrace (show manipulators) $
             let part2 = snd $ manipulationProblemEr election
-                solveRest = startPartial solver cache in
+                solveRest = startPartial solver part1 in
             if manipulators > numVotes then (candidates, []) else
             filter3 (\target -> (fst . solveRest) (part2 votes manipulators target)) candidates
     in realSolver

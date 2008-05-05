@@ -14,7 +14,7 @@ data Candidate a = Candidate !a
     deriving (Show, Eq, Ord, Read)
 
 data Vote a = Vote ![Candidate a]
-    deriving (Show, Eq, Read)
+    deriving (Show, Eq, Ord, Read)
 
 -- Uniform type for voting rules: take a list of candidates, a list of
 -- votes, and selects a candidate from the list of candidates as the
