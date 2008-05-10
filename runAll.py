@@ -71,7 +71,7 @@ class instance(object):
             return ('/home/stu2/s1/cxc0117/thesis/run/data/' +
                     '-'.join([self.distribution[0], str(self.cands),
                               str(self.n), self.rule]) +
-                    '.out%2d' % self.fragmentNo)
+                    '.out%02d' % self.fragmentNo)
 
     @property
     def repo(self):
