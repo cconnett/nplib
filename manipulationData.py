@@ -9,8 +9,9 @@ def readFiles(*filenames):
         with file(name) as f:
             for line in f:
                 match = _datarx.match(line)
-                num, bound, data = match.groups()
-                repo[(int(num), bound)] = data
+                if match:
+                    num, bound, data = match.groups()
+                    repo[(int(num), bound)] = data
     return repo
 
 def missing(repo):

@@ -1,7 +1,6 @@
 #!/bin/python
 import time
 from subprocess import Popen as Process
-from path import path
 import random
 import manipulationData as md
 executable = '/home/stu2/s1/cxc0117/thesis/code/Solve'
@@ -34,7 +33,7 @@ class instance(object):
         self.process = None
 
     def _numdone(self):
-        return 1000 - len(md.missing(md.readFile(self.result)))
+        return 1000 - len(list(md.missing(md.readFiles(self.result))))
     numdone = property(_numdone)
 
     def _input(self):
