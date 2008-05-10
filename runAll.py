@@ -3,7 +3,7 @@ import time
 from subprocess import Popen as Process
 from path import path
 import random
-
+import parseData
 executable = '/home/stu2/s1/cxc0117/thesis/code/Solve'
 
 import sys
@@ -33,24 +33,7 @@ class instance(object):
         self.host = None
         self.process = None
     def _numdone(self):
-        line = -1
-        while True:
-            try:
-                lastTag = file(self.result).readlines()[line] .split(':')[0]
-                try:
-                    lastSolved = int(lastTag)
-                except ValueError:
-                    lastTag, upperOrLower = lastTag.split(' ')
-                    try:
-                        lastSolved = int(lastTag)
-                    except ValueError:
-                        line -= 1
-                        continue
-                    if upperOrLower == 'lower':
-                        lastSolved -= 1
-            except (IOError, IndexError):
-                lastSolved = 0
-            return lastSolved
+        1000 - len(parseData.missing(parseData.readFile(self.result)))
     numdone = property(_numdone)
     def _input(self):
         return '/tmp/bigElections/' + \
