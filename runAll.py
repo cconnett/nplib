@@ -3,7 +3,7 @@ import time
 from subprocess import Popen as Process
 from path import path
 import random
-import parseData
+import manipulationData as md
 executable = '/home/stu2/s1/cxc0117/thesis/code/Solve'
 
 import sys
@@ -32,16 +32,20 @@ class instance(object):
         self.rule = rule
         self.host = None
         self.process = None
+
     def _numdone(self):
-        1000 - len(parseData.missing(parseData.readFile(self.result)))
+        return 1000 - len(md.missing(md.readFile(self.result)))
     numdone = property(_numdone)
+
     def _input(self):
         return '/tmp/bigElections/' + \
                '-'.join([self.distribution[0], str(self.cands), str(self.n)])
     input = property(_input)
+
     result = property(lambda self: '/home/stu2/s1/cxc0117/thesis/run/data/' + \
                       '-'.join([self.distribution[0], str(self.cands), str(self.n), self.rule]) \
                       + '.data')
+
     def __str__(self):
         s = ''
         s += '%4d of 1000 / ' % self.numdone
