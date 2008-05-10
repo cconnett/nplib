@@ -20,24 +20,28 @@ import Solvers
 
 satSolver = RSat
 
+pullElections electionsRaw electionsList =
+    map (\i -> (i, electionsRaw!!(i-1))) electionsList
+
 main = do
   args <- getArgs
   hSetBuffering stdout LineBuffering
   if not $ length args `elem` [3,4]
-     then error "Solve method rule electionsFile [startNo]"
+     then error "Solve method rule electionsFile [electionsList]"
      else do
        let electionsFilename = (args !! 2) :: String
-       let startNo = if length args == 4 then (read $ args !! 3) else 1
-       elections <- readElections electionsFilename
-       if (not $ 0 < startNo && startNo <= length elections) then error "Bad startNo" else do
+       electionsRaw <- readElections electionsFilename
+       let elections = if length args == 4 then
+                           pullElections electionsRaw (read $ args !! 3) else
+                           zip [1..] electionsRaw
        let method = args !! 0
            winnerCalculator = case method of
                                 "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
                                 "f2w" -> findTwoWinners (read (args !! 1))
-                                "sat" -> possibleWinnersBySolver satSolver (read (args !! 1)) (head elections)
-                                "hyb" -> hybridSolver (head elections)
+                                "sat" -> possibleWinnersBySolver satSolver (read (args !! 1)) (snd $ head elections)
+                                "hyb" -> hybridSolver (snd $ head elections)
                                           (possibleWinnersByBruteForce (read (args !! 1)))
-                                          (possibleWinnersBySolver satSolver (read (args !! 1)) (head elections))
+                                          (possibleWinnersBySolver satSolver (read (args !! 1)) (snd $ head elections))
                                 _     -> error "Supported methods are \nbf\nf2w\nsat\nhyb"
        sequence $
           [do let (theMinimumManipulatorsLower, theMinimumManipulatorsUpper) =
@@ -45,4 +49,4 @@ main = do
               putStrLn $ (show electionNo) ++ " lower: " ++ (show theMinimumManipulatorsLower)
               putStrLn $ (show electionNo) ++ " upper: " ++ (show theMinimumManipulatorsUpper)
               hFlush stdout
-           | (electionNo, election) <- zip [startNo..] (drop (startNo - 1) elections)]
+           | (electionNo, election) <- elections]
