@@ -24,4 +24,4 @@ def writeRepo(repo, filename):
     keys.sort()
     with file(filename, 'w') as f:
         for (num, bound) in keys:
-            print '%s %s: %s' % (num, bound, repo[(num, bound)])
+            print >> f, '%s %s: %s' % (num, bound, repo[(num, bound)])
