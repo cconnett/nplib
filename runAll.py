@@ -40,6 +40,7 @@ class instance(object):
         self.fragmentNo = fragmentNo
 
         self.donelist = None
+        self.updatedonelist()
 
     @property
     def numdone(self):
@@ -86,14 +87,6 @@ class instance(object):
                                    self.n, self.rule)
         return s
 
-instances = []
-for n in [1,2,4,8,16,32,64,128,256]:
-    for cands in [3,4,5]:
-        for distribution in ['uniform', 'condorcet', 'spatial']:
-            for rule in ['borda','veto','plurality','irv','copeland','pluralityWithRunoff']:
-                i = instance(cands, distribution, n, rule)
-                instances.append(i)
-
 def checkProcs():
     for i in instances:
         i.updatedonelist()
@@ -102,6 +95,34 @@ def checkProcs():
         i.process = 'DONE'
         i.host = 'DONE'
         instances.remove(i)
+
+instances = []
+for n in [1,2,4,8,16,32,64,128,256]:
+    for cands in [3,4,5]:
+        for distribution in ['uniform', 'condorcet', 'spatial']:
+            for rule in ['borda','veto','plurality','irv','copeland','pluralityWithRunoff']:
+                i = instance(cands, distribution, n, rule)
+                if i.numtogo > 0:
+                    instances.append(i)
+
+if len(hosts) > len(instances):
+    print 'Breaking up instances'
+    hostsAssigned = dict.fromkeys(instances, 1)
+    while sum(hostsAssigned.values()) < len(hosts):
+        worst = max(instances,
+                    key=lambda i: float(i.numtogo) / hostsAssigned[i])
+        hostsAssigned[worst] += 1
+
+    instances = []
+    for i in hostsAssigned:
+        for fragmentNo in range(1,hostsAssigned[i]+1):
+            perHost = float(i.numtogo) / hostsAssigned[i]
+            newtargetlist = i.targetlist[
+                int(round(perHost * (fragmentNo-1))) + i.numdone :
+                int(round(perHost *  fragmentNo   )) + i.numdone]
+            newinstance = instance(i.cands, i.distribution, i.n, i.rule,
+                                   newtargetlist, fragmentNo)
+            instances.append(newinstance)
 
 while instances:
     checkProcs()
@@ -118,13 +139,13 @@ while instances:
             host = random.choice(availablehosts)
             #print host, 'is available'
             args = ['ssh', '-x', host.replace('1','').replace('2',''),
-                    'ulimit -c 0; /usr/bin/nice -19 %s +RTS -c -RTS sat %s %s %s' % 
-                    (executable, rule, instance.input, str(instance.numdone+1))]
+                    'ulimit -c 0; /usr/bin/nice -19 %s +RTS -c -RTS sat %s %s "%s"' %
+                    (executable, rule, instance.input, str(instance.targetlist))]
             outputfilehandle = file(instance.output, 'a', 1)
             #print 'Launching', ' '.join(args)
             proc = Process(args,
                            stdout=outputfilehandle,
-                           stderr=file(instance.result + '.err','a',0),
+                           stderr=file(instance.output + '.err','a',0),
                            bufsize=1)
             #proc=Process(['echo','-n'])
             instance.process = proc
