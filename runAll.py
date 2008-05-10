@@ -1,11 +1,13 @@
 #!/bin/python
+import sys
 import time
 from subprocess import Popen as Process
 import random
 import manipulationData as md
+from glob import glob
+
 executable = '/home/stu2/s1/cxc0117/thesis/code/Solve'
 
-import sys
 
 hosts = ['achilles', 'odysseus', 'agamemnon', 'heracles',
          'rhea', 'dione', 'prometheus', 'oedipus', 'perseus',
@@ -24,30 +26,61 @@ hosts = ['achilles', 'odysseus', 'agamemnon', 'heracles',
 #hosts = sum([[host+'1',host+'2'] for host in hosts], [])
 
 class instance(object):
-    def __init__(self, cands, distribution, n, rule):
+    def __init__(self, cands, distribution, n, rule,
+                 targetlist=None, fragmentNo=0):
         self.cands = cands
         self.distribution = distribution
         self.n = n
         self.rule = rule
         self.host = None
         self.process = None
+        self.targetlist = targetlist
+        if self.targetlist == None:
+            self.targetlist = range(1, 1001)
+        self.fragmentNo = fragmentNo
 
-    def _numdone(self):
-        return 1000 - len(list(md.missing(md.readFiles(self.result))))
-    numdone = property(_numdone)
+        self.donelist = None
 
-    def _input(self):
+    @property
+    def numdone(self):
+        return len(self.donelist)
+    def updatedonelist(self):
+        self.donelist = []
+        data = md.readFiles(*([self.repo] + glob(self.repo[:-5] + '.out*')))
+        for target in self.targetlist:
+            if (target, 'lower') in data and (target, 'upper') in data:
+                self.donelist.append(target)
+
+    @property
+    def missing(self):
+        return list(set(self.targetlist) - set(self.donelist))
+    @property
+    def numtogo(self):
+        return len(self.missing)
+
+    @property
+    def input(self):
         return '/tmp/bigElections/' + \
                '-'.join([self.distribution[0], str(self.cands), str(self.n)])
-    input = property(_input)
+    @property
+    def output(self):
+        if self.fragmentNo == 0:
+            return self.repo
+        else:
+            return ('/home/stu2/s1/cxc0117/thesis/run/data/' +
+                    '-'.join([self.distribution[0], str(self.cands),
+                              str(self.n), self.rule]) +
+                    '.out%2d' % self.fragmentNo)
 
-    result = property(lambda self: '/home/stu2/s1/cxc0117/thesis/run/data/' + \
-                      '-'.join([self.distribution[0], str(self.cands), str(self.n), self.rule]) \
-                      + '.data')
+    @property
+    def repo(self):
+        return ('/home/stu2/s1/cxc0117/thesis/run/data/' +
+                '-'.join([self.distribution[0], str(self.cands),
+                          str(self.n), self.rule]) + '.data')
 
     def __str__(self):
         s = ''
-        s += '%4d of 1000 / ' % self.numdone
+        s += '%4d of %4d / ' % (self.numdone, len(self.targetlist))
         s += '(%14s) ' % (self.host if self.host else 'PENDING')
         s += '%13s %d %3d %19s' % (self.distribution, self.cands,
                                    self.n, self.rule)
@@ -59,12 +92,12 @@ for n in [1,2,4,8,16,32,64,128,256]:
         for distribution in ['uniform', 'condorcet', 'spatial']:
             for rule in ['borda','veto','plurality','irv','copeland','pluralityWithRunoff']:
                 i = instance(cands, distribution, n, rule)
-                if i.numdone < 1000:
-                    instances.append(i)
+                instances.append(i)
 
 def checkProcs():
-    finished_instances = [i for i in instances
-                          if i.numdone == 1000]
+    for i in instances:
+        i.updatedonelist()
+    finished_instances = [i for i in instances if not i.missing]
     for i in finished_instances:
         i.process = 'DONE'
         i.host = 'DONE'
@@ -87,7 +120,7 @@ while instances:
             args = ['ssh', '-x', host.replace('1','').replace('2',''),
                     'ulimit -c 0; /usr/bin/nice -19 %s +RTS -c -RTS sat %s %s %s' % 
                     (executable, rule, instance.input, str(instance.numdone+1))]
-            outputfilehandle = file(instance.result, 'a', 1)
+            outputfilehandle = file(instance.output, 'a', 1)
             #print 'Launching', ' '.join(args)
             proc = Process(args,
                            stdout=outputfilehandle,
