@@ -10,6 +10,6 @@ for n in [1,2,4,8,16,32,64,128,256]:
                 base = ('/home/stu2/s1/cxc0117/thesis/run/data/' +
                         '-'.join([distribution[0], str(cands),
                                   str(n), rule]))
-                files = glob(base + '*out*') + [base + '.data']
+                files = glob(base + '*out*') + [base + '.repo']
                 repo = md.readFiles(*files)
                 md.writeRepo(repo, base + '.repo')

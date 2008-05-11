@@ -77,7 +77,7 @@ class instance(object):
     def repo(self):
         return ('/home/stu2/s1/cxc0117/thesis/run/data/' +
                 '-'.join([self.distribution[0], str(self.cands),
-                          str(self.n), self.rule]) + '.data')
+                          str(self.n), self.rule]) + '.repo')
 
     def __str__(self):
         s = ''
