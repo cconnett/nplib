@@ -128,7 +128,7 @@ if len(hosts) > len(instances):
                 dp[(i,h)] = None
             else:
                 dp[(i,h)] = min([dp[(i-1,h-mine)] + [mine]
-                                 for mine in range(1,h-i+1)],
+                                 for mine in range(1, h - i + 2)],
                                 key=dpScore)
 
     bestAssignment = dp[(len(instances),len(hosts))]
