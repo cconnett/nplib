@@ -103,23 +103,45 @@ for n in [1,2,4,8,16,32,64,128,256]:
             for rule in ['borda','veto','plurality','irv','copeland','pluralityWithRunoff']:
                 i = instance(cands, distribution, n, rule)
                 if i.numtogo > 0:
+                    print i.cands, i.distribution, i.n, i.rule, i.numtogo
                     instances.append(i)
+
+def dpScore(assignment):
+    return max(float(instance.numtogo) / assignment[index]
+               if assignment and assignment[index] > 0 else sys.maxint
+               for (index, instance) in enumerate(instances)
+               if index < len(assignment))
 
 if len(hosts) > len(instances):
     print 'Breaking up instances'
-    hostsAssigned = dict.fromkeys(instances, 1)
-    while sum(hostsAssigned.values()) < len(hosts):
-        worst = max(instances,
-                    key=lambda i: float(i.numtogo) / hostsAssigned[i])
-        hostsAssigned[worst] += 1
 
-    instances = []
-    for i in hostsAssigned:
-        for fragmentNo in range(1,hostsAssigned[i]+1):
-            perHost = float(i.numtogo) / hostsAssigned[i]
-            newtargetlist = i.targetlist[
-                int(round(perHost * (fragmentNo-1))) + i.numdone :
-                int(round(perHost *  fragmentNo   )) + i.numdone]
+    dp = {}
+
+    for i in range(1, len(instances)+1):
+        print i
+        for h in range(1, len(hosts)+1):
+            if i == 1:
+                dp[(i,h)] = [h]
+            elif i == h:
+                dp[(i,h)] = [1] * h
+            elif i > h:
+                dp[(i,h)] = None
+            else:
+                dp[(i,h)] = min([dp[(i-1,h-mine)] + [mine]
+                                 for mine in range(1,h-i+1)],
+                                key=dpScore)
+
+    bestAssignment = dp[(len(instances),len(hosts))]
+    bestPairs = zip(instances, bestAssignment)
+    print bestAssignment
+
+    instances=[]
+    for (i, assigned) in bestPairs:
+        perHost = float(i.numtogo) / assigned
+        for fragmentNo in range(1, assigned + 1):
+            newtargetlist = i.missing[
+                int(round(perHost * (fragmentNo-1))):
+                int(round(perHost *  fragmentNo   ))]
             newinstance = instance(i.cands, i.distribution, i.n, i.rule,
                                    newtargetlist, fragmentNo)
             instances.append(newinstance)
