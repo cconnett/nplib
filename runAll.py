@@ -47,7 +47,7 @@ class instance(object):
         return len(self.donelist)
     def updatedonelist(self):
         self.donelist = []
-        data = md.readFiles(*([self.repo] + glob(self.repo[:-5] + '.out*')))
+        data = md.readFiles(*([self.repo] + glob(self.repo[:-5] + '.out??')))
         for target in self.targetlist:
             if (target, 'lower') in data and (target, 'upper') in data:
                 self.donelist.append(target)
