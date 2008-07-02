@@ -39,6 +39,13 @@ instance SatSolver RSat where
     run ss = rsatRun
     parse ss = rsatParse
 
+data Minisat = Minisat
+instance Solver Minisat where
+    startPartial s = satA s
+instance SatSolver Minisat where
+    run ss = minisatRun
+    parse ss = minisatParse
+
 -- Conversion of Problem instances to DIMACS (CNF-SAT) formats.
 toDIMACS varMap (Formula clauses) = toDIMACS' varMap clauses
 toDIMACS varMap (TopFormula clauses) = toDIMACS' varMap clauses
@@ -122,6 +129,37 @@ rsatRun dimacs = do
 -- Parse the output of rsat into answers about the formula.
 rsatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
 rsatParse varMapF answer =
+    let assignmentLine = (lines answer) !! 2
+        answerLine = last $ lines answer
+        assignmentStrings = words assignmentLine
+        assignments = map read (init assignmentStrings)
+        varMapR = M.fromList $ map (\(a,b)->(b,a)) $
+                  M.toList $ varMapF
+    in (if answer =~ "UNKNOWN" then Nothing else Just $
+        not $ answer =~ "UNSATISFIABLE",
+        mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments)
+
+minisatRun dimacs = do
+  (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"
+  hPutStr handle dimacs
+  hClose handle
+  (inp, result, err, satProcess) <-
+      runInteractiveProcess (solversHome ++ "rsat_2.01_release/rsat")
+                   [tmpname, "-s", "-t", "60"]
+                   Nothing Nothing
+  hClose inp
+  hClose err
+  readResult <- hGetContents result
+  putStr (filter (\x -> False) readResult)
+  hClose result
+  --getProcessExitCode satProcess
+  waitForProcess satProcess
+  removeFile tmpname
+  return readResult
+
+-- Parse the output of rsat into answers about the formula.
+minisatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
+minisatParse varMapF answer =
     let assignmentLine = (lines answer) !! 2
         answerLine = last $ lines answer
         assignmentStrings = words assignmentLine
