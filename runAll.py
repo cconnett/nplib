@@ -5,25 +5,9 @@ from subprocess import Popen as Process
 import random
 import manipulationData as md
 from glob import glob
+from hosts import hosts
 
 executable = '/home/stu2/s1/cxc0117/thesis/code/Solve'
-
-
-hosts = ['achilles', 'odysseus', 'agamemnon', 'heracles',
-         'rhea', 'dione', 'prometheus', 'oedipus', 'perseus',
-         'andromeda', 'gorgon', 'medusa', 'cerberus', 'siren',
-         'pegasus', 'centaur', 'cyclops', 'yes', 'platters',
-         'kinks', 'joplin', 'hendrix', 'beatles', 'drifters',
-         'buddy', 'doors', 'stones', 'valens', 'orbison', 'elvis',
-         #'domino',
-         'berry', 'everlys', 'supremes', 'maine',
-         'iowa', 'florida', 'alaska', 'alabama', 'delaware',
-         'missouri', 'nebraska', 'indiana', 'utah', 'massachusetts',
-         'arizona',
-         'newyork', 'michigan', 'kansas', 'idaho',
-         'georgia', 'illinois', 'vermont', 'california', 'arkansas',
-         'nevada', 'rhodeisland']
-#hosts = sum([[host+'1',host+'2'] for host in hosts], [])
 
 class instance(object):
     def __init__(self, cands, distribution, n, rule,
