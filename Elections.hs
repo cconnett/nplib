@@ -11,7 +11,7 @@ import Test.QuickCheck
 import IO
 import Control.Monad
 import Data.Ord
-    
+
 distributions = ["uniform", "condorcet p", "spatial d"]
 
 getVoteGenerator :: (Eq a) => [String] -> [Candidate a] -> Gen (Gen (Vote a))
@@ -52,7 +52,7 @@ condorcetVote p trueOrder = do
 
 uniform :: Gen Double
 uniform = choose (0.0, 1.0)
-                     
+
 normal :: Double -> Double -> Gen Double
 normal mean stddev = do
   a <- uniform :: Gen Double
@@ -68,4 +68,4 @@ spatialVote issues candidatePositions candidates = do
   return $ Vote $ sortBy (comparing (distance voter)) candidates
 
 readElections :: String -> IO [[Vote Int]]
-readElections filename = liftM read $ readFile filename 
+readElections filename = liftM read $ readFile filename

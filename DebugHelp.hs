@@ -38,12 +38,11 @@ floatingBits problem =
     let (sat, trueProps) = solveA ZChaff problem
         allTheProps = allProps problem
         falseProps = allTheProps \\ trueProps
-        compound prop = 
+        compound prop =
             (Formula (map (Clause . (:[])      ) (filter (not . isAux) trueProps)) :
              Formula (map (Clause . (:[]) . neg) (filter (not . isAux) falseProps)) :
              Formula [Clause [prop]] :
              [conjoin $ toSAT problem])
     in
     filter (\prop -> all (solve ZChaff) (map compound [prop, neg prop]))
-           (filter isAux allTheProps) 
-                 
+           (filter isAux allTheProps)
