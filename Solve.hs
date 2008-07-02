@@ -26,13 +26,13 @@ pullElections electionsRaw electionsList =
 main = do
   args <- getArgs
   hSetBuffering stdout LineBuffering
-  if not $ length args `elem` [3,4]
+  if length args < 3
      then error "Solve method rule electionsFile [electionsList]"
      else do
        let electionsFilename = (args !! 2) :: String
        electionsRaw <- readElections electionsFilename
-       let elections = if length args == 4 then
-                           pullElections electionsRaw (read $ args !! 3) else
+       let elections = if length args >= 4 then
+                           pullElections electionsRaw (map read $ drop 3 args) else
                            zip [1..] electionsRaw
        let method = args !! 0
            winnerCalculator = case method of
