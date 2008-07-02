@@ -11,7 +11,7 @@ def readFiles(*filenames):
                 match = _datarx.match(line)
                 if match:
                     num, bound, data = match.groups()
-                    repo[(int(num), bound)] = data
+                    repo[(int(num), bound)] = eval(data)
     return repo
 
 def missing(repo):
@@ -24,4 +24,4 @@ def writeRepo(repo, filename):
     keys.sort()
     with file(filename, 'w') as f:
         for (num, bound) in keys:
-            print >> f, '%s %s: %s' % (num, bound, repo[(num, bound)])
+            print >> f, '%s %s: %s' % (num, bound, str(repo[(num, bound)]))
