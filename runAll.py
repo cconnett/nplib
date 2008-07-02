@@ -65,13 +65,10 @@ class instance(object):
                '-'.join([self.distribution[0], str(self.cands), str(self.n)])
     @property
     def output(self):
-        if self.fragmentNo == 0:
-            return self.repo
-        else:
-            return ('/home/stu2/s1/cxc0117/thesis/run/data/' +
-                    '-'.join([self.distribution[0], str(self.cands),
-                              str(self.n), self.rule]) +
-                    '.out%02d' % self.fragmentNo)
+        return ('/home/stu2/s1/cxc0117/thesis/run/data/' +
+                '-'.join([self.distribution[0], str(self.cands),
+                          str(self.n), self.rule]) +
+                '.out%02d' % self.fragmentNo)
 
     @property
     def repo(self):
