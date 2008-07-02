@@ -146,9 +146,9 @@ minimumManipulators possibleWinners election =
     where candidates = extractCandidates election
           possibleWinnersCache = map ((flip possibleWinners) election) [0..]
           minToWinLower n prevCutoff = value : (minToWinLower (n+1) value)
-              where value = fromJust $ findFast pred [prevCutoff..]
+              where value = fromJust $ findFirst pred [prevCutoff..]
                     pred m = n <= (length $ concat $ [fst $ possibleWinnersCache !! m,
                                                       snd $ possibleWinnersCache !! m])
           minToWinUpper n prevCutoff = value : (minToWinUpper (n+1) value)
-              where value = fromJust $ findFast pred [prevCutoff..]
+              where value = fromJust $ findFirst pred [prevCutoff..]
                     pred m = n <= (length $ fst $ possibleWinnersCache !! m)

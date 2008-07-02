@@ -38,15 +38,15 @@ filter3 pred3 (a:as) =
 -- the search space, after which all elements satisfy it.  This
 -- function is intended to be used when computing the predicate is
 -- expensive.
-findFast :: MonadPlus m => (a -> Bool) -> [a] -> m a
-findFast p space = liftM (space !!) answer
-    where answer = findFast' (map p space) 0
-findFast' cache step
+findFirst :: MonadPlus m => (a -> Bool) -> [a] -> m a
+findFirst p space = liftM (space !!) answer
+    where answer = findFirst' (map p space) 0
+findFirst' cache step
     | null cache = mzero
     | head cache = return 0
     | (not $ cache `hasIndex` point) || cache !! point =
-        liftM (ps +) $ findFast' (drop ps cache) 0
-    | otherwise = findFast' cache (next step)
+        liftM (ps +) $ findFirst' (drop ps cache) 0
+    | otherwise = findFirst' cache (next step)
     where point = step
           ps = prev step
 
@@ -59,15 +59,15 @@ hasIndex [] c = False
 hasIndex list 0 = True
 hasIndex list c = (tail list) `hasIndex` (c-1)
 
-prop_FindFastFinitePresent target list = any (>target) list ==>
-    ((fromJust $ findFast (>target) (sort list)) ==
+prop_FindFirstFinitePresent target list = any (>target) list ==>
+    ((fromJust $ findFirst (>target) (sort list)) ==
      (head $ dropWhile (<=target) (sort list)))
 
-prop_FindFastFiniteAbsent target list =
-    all (<=target) list ==> ((findFast (>target) (sort list)) == Nothing)
+prop_FindFirstFiniteAbsent target list =
+    all (<=target) list ==> ((findFirst (>target) (sort list)) == Nothing)
 
-prop_FindFastInfinite target starting = it == Just starting || it == Just (target + 1)
-    where it = findFast (>target) [starting..]
+prop_FindFirstInfinite target starting = it == Just starting || it == Just (target + 1)
+    where it = findFirst (>target) [starting..]
 
                
 circularZip :: [[a]] -> [a]
