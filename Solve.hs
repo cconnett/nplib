@@ -18,7 +18,7 @@ import Control.Monad
 import Test.QuickCheck
 import Solvers
 
-satSolver = RSat
+satSolver = Minisat
 
 pullElections electionsRaw electionsList =
     map (\i -> (i, electionsRaw!!(i-1))) electionsList

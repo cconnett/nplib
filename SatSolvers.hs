@@ -12,6 +12,7 @@ import Data.Maybe
 import System.IO
 import System.Directory
 import System.Process
+import System.Cmd
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Foreign (unsafePerformIO)
@@ -143,29 +144,21 @@ minisatRun dimacs = do
   (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"
   hPutStr handle dimacs
   hClose handle
-  (inp, result, err, satProcess) <-
-      runInteractiveProcess (solversHome ++ "rsat_2.01_release/rsat")
-                   [tmpname, "-s", "-t", "60"]
-                   Nothing Nothing
-  hClose inp
-  hClose err
-  readResult <- hGetContents result
-  putStr (filter (\x -> False) readResult)
-  hClose result
-  --getProcessExitCode satProcess
-  waitForProcess satProcess
+  (stdoutName, handle2) <- openTempFile "/tmp/" "minisat.stdout"
+  hClose handle2
+
+  system ("ulimit -t 60; " ++
+          solversHome ++ "minisat/simp/minisat_release " ++ tmpname ++
+         " 2> /dev/null 1> " ++ stdoutName)
+  readResult <- readFile stdoutName
+  putStr (filter (const False) readResult)
   removeFile tmpname
+  removeFile stdoutName
   return readResult
 
--- Parse the output of rsat into answers about the formula.
+-- Parse the output of minisat into answers about the formula.
 minisatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
-minisatParse varMapF answer =
-    let assignmentLine = (lines answer) !! 2
-        answerLine = last $ lines answer
-        assignmentStrings = words assignmentLine
-        assignments = map read (init assignmentStrings)
-        varMapR = M.fromList $ map (\(a,b)->(b,a)) $
-                  M.toList $ varMapF
-    in (if answer =~ "UNKNOWN" then Nothing else Just $
-        not $ answer =~ "UNSATISFIABLE",
-        mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments)
+minisatParse varMapF answer
+    | answer =~ "UNSATISFIABLE" = (Just False, [])
+    | answer =~ "SATISFIABLE" = (Just True, [])
+    | otherwise = (Nothing, [])
