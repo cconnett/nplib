@@ -1,17 +1,19 @@
 from __future__ import with_statement
 import re
+import os.path
 
 _datarx = re.compile(r'^(\d+) (lower|upper): (.*)$')
 
 def readFiles(*filenames):
     repo = {}
     for name in filenames:
-        with file(name) as f:
-            for line in f:
-                match = _datarx.match(line)
-                if match:
-                    num, bound, data = match.groups()
-                    repo[(int(num), bound)] = eval(data)
+        if os.path.exists(name):
+            with file(name) as f:
+                for line in f:
+                    match = _datarx.match(line)
+                    if match:
+                        num, bound, data = match.groups()
+                        repo[(int(num), bound)] = eval(data)
     return repo
 
 def missing(repo):
