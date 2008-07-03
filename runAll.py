@@ -143,7 +143,7 @@ while instances:
             #print host, 'is available'
             args = ['ssh', '-x', host.replace('1','').replace('2',''),
                     'ulimit -c 0; /usr/bin/nice -19 %s +RTS -c -RTS sat %s %s %s' %
-                    (executable, rule, instance.input, ' '.join(map(str,instance.targetlist)))]
+                    (executable, rule, instance.input, ' '.join(map(str,instance.missing)))]
             outputfilehandle = file(instance.output, 'a', 1)
             #print 'Launching', ' '.join(args)
             proc = Process(args,
