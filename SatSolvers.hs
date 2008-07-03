@@ -147,9 +147,10 @@ minisatRun dimacs = do
   (stdoutName, handle2) <- openTempFile "/tmp/" "minisat.stdout"
   hClose handle2
 
-  system ("ulimit -t 60; " ++
+  system ("bash -c 'ulimit -t 60; " ++
           solversHome ++ "minisat/simp/minisat_release " ++ tmpname ++
-         " 2> /dev/null 1> " ++ stdoutName)
+         " 2> /dev/null 1> " ++ stdoutName ++
+          "'")
   readResult <- readFile stdoutName
   putStr (filter (const False) readResult)
   removeFile tmpname
