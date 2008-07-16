@@ -136,7 +136,7 @@ if len(hosts) > len(instances):
 
 while instances:
     checkProcs()
-    instances.sort(key=lambda i: (1 if i.host and host != 'DONE' else 0, i.numdone, -i.n, -i.cands,),
+    instances.sort(key=lambda i: (1 if i.host and host != 'DONE' else 0, -i.numtogo, i.numdone, -i.n, -i.cands,),
                    reverse=True)
     
     for instance in instances:
