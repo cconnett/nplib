@@ -88,31 +88,38 @@ for n in [1,2,4,8,16,32,64,128,256]:
                     instances.append(i)
 
 def dpScore(assignment):
+    global instances
+    if not assignment:
+        return sys.maxint
+    if 0 in assignment:
+        return sys.maxint
     return max(float(instance.numtogo) / assignment[index]
-               if assignment and assignment[index] > 0 else sys.maxint
-               for (index, instance) in enumerate(instances)
-               if index < len(assignment))
+               for (index, instance) in enumerate(instances[:len(assignment)]))
 
+dplimit = 30
 if len(hosts) > len(instances):
-    print 'Breaking up instances'
+    print 'Breaking up %d instances' % len(instances)
+    if len(instances) > dplimit:
+        print 'Over DP limit, limiting to %d instances' % dplimit
+        instances = instances[:dplimit]
 
-    dp = {}
+    dp = [[None] * (len(hosts) + 1) for x in range(len(instances) + 1)]
 
     for i in range(1, len(instances)+1):
         print i
         for h in range(1, len(hosts)+1):
             if i == 1:
-                dp[(i,h)] = [h]
+                dp[i][h] = [h]
             elif i == h:
-                dp[(i,h)] = [1] * h
+                dp[i][h] = [1] * h
             elif i > h:
-                dp[(i,h)] = None
+                dp[i][h] = None
             else:
-                dp[(i,h)] = min([dp[(i-1,h-mine)] + [mine]
-                                 for mine in range(1, h - i + 2)],
-                                key=dpScore)
+                dp[i][h] = min([dp[i-1][h-mine] + [mine]
+                                for mine in range(1, h - i + 2)],
+                               key=dpScore)
 
-    bestAssignment = dp[(len(instances),len(hosts))]
+    bestAssignment = dp[len(instances)][len(hosts)]
     bestPairs = zip(instances, bestAssignment)
     print bestAssignment
 
