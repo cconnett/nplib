@@ -155,7 +155,7 @@ while instances:
             #print 'Launching', ' '.join(args)
             proc = Process(args,
                            stdout=outputfilehandle,
-                           stderr=file(instance.output + '.err','a',0),
+                           stderr=file('/dev/null', 'a', 0),
                            bufsize=1)
             #proc=Process(['echo','-n'])
             instance.process = proc
