@@ -14,8 +14,10 @@ main = do
        electionsData <- readFile electionsFilename
        let elections = (read $ electionsData) :: [[Vote Int]]
            candidates = extractCandidates (head elections)
-       mapM (\candidate -> putStrLn $ show $ scoringProtocolScore bordaS candidates (head elections) (Candidate candidate)) [1..length candidates]
-       putStr $ unlines $ map ((unwords.(map (show.fromCandidate))).fromVote) (elections !! (electionNo - 1))
+       mapM (\candidate -> putStrLn $ show $ scoringProtocolScore bordaS candidates (elections !! (electionNo - 1)) (Candidate candidate)) [1..length candidates]
+       putStr $ unlines $
+              map (\group -> show (length group) ++ ": " ++ head group) $ group $ sort $
+              map ((unwords . (map (show . fromCandidate))) . fromVote) (elections !! (electionNo - 1))
 
 scoringProtocolScore s candidates votes candidate = (candidate, score candidate)
     where score candidate = sum $ map (scoreList!!) $ mapMaybe (\vote -> (candidate `elemIndex` (fromVote vote))) votes
