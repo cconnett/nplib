@@ -2,6 +2,8 @@ from __future__ import with_statement
 import re
 import os.path
 
+EVAL = False
+
 _datarx = re.compile(r'^(\d+) (lower|upper): (.*)$')
 
 def readFiles(*filenames):
@@ -13,7 +15,10 @@ def readFiles(*filenames):
                     match = _datarx.match(line)
                     if match:
                         num, bound, data = match.groups()
-                        repo[(int(num), bound)] = eval(data)
+                        if EVAL:
+                            repo[(int(num), bound)] = eval(data)
+                        else:
+                            repo[(int(num), bound)] = data
     return repo
 
 def missing(repo):
@@ -26,4 +31,8 @@ def writeRepo(repo, filename):
     keys.sort()
     with file(filename, 'w') as f:
         for (num, bound) in keys:
-            print >> f, '%s %s: %s' % (num, bound, str(repo[(num, bound)]))
+            if EVAL:
+                data = str(repo[(num,bound)])
+            else:
+                data = repo[(num,bound)]
+            print >> f, '%s %s: %s' % (num, bound, data)
