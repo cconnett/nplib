@@ -81,7 +81,11 @@ instances = []
 for n in [1,2,4,8,16,32,64,128,256]:
     for cands in [3,4,5]:
         for distribution in ['uniform', 'condorcet', 'spatial']:
-            for rule in ['borda','veto','plurality','irv','copeland','pluralityWithRunoff']:
+            for rule in ['borda','veto','irv','copeland','pluralityWithRunoff']:
+                if cands == 3 and rule == 'pluralityWithRunoff':
+                    continue
+                if n == 256 and distribution != 'uniform':
+                    continue
                 i = instance(cands, distribution, n, rule)
                 if i.numtogo > 0:
                     print i.cands, i.distribution, i.n, i.rule, i.numtogo
