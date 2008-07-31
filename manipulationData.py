@@ -2,7 +2,7 @@ from __future__ import with_statement
 import re
 import os.path
 
-EVAL = False
+EVAL = True
 
 _datarx = re.compile(r'^(\d+) (lower|upper): (.*)$')
 
@@ -15,8 +15,15 @@ def readFiles(*filenames):
                     match = _datarx.match(line)
                     if match:
                         num, bound, data = match.groups()
+                        if (int(num), bound) in repo:
+                            continue
                         if EVAL:
-                            repo[(int(num), bound)] = eval(data)
+                            try:
+                                repo[(int(num), bound)] = eval(data)
+                                print 'Duplication on %d %s' % (int(num), bound)
+                            except SyntaxError:
+                                print 'Read error on %d %s' % (int(num), bound)
+                                pass
                         else:
                             repo[(int(num), bound)] = data
     return repo
