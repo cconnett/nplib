@@ -13,6 +13,7 @@ import System.IO
 import System.Directory
 import System.Process
 import System.Cmd
+import System.Exit
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Foreign (unsafePerformIO)
@@ -146,17 +147,24 @@ minisatRun dimacs = do
   hClose handle
   (stdoutName, handle2) <- openTempFile "/tmp/" "minisat.stdout"
   hClose handle2
-
-  system ("bash -c 'ulimit -t 60; " ++
-          solversHome ++ "minisat/simp/minisat_release " ++ tmpname ++
-         " 2> /dev/null 1> " ++ stdoutName ++
-          "'")
+  minisatRealRun tmpname stdoutName
   readResult <- readFile stdoutName
   putStr (filter (const False) readResult)
   removeFile tmpname
   removeFile stdoutName
   return readResult
 
+minisatRealRun tmpname stdoutName = do
+  status <- system ("bash -c 'ulimit -t 60; " ++
+                   solversHome ++ "minisat/simp/minisat_release " ++ tmpname ++
+                   " 2> /dev/null 1> " ++ stdoutName ++
+                   "'")
+  case status of
+    ExitFailure 10 -> return ()
+    ExitFailure 20 -> return ()
+    ExitFailure 158 -> return ()
+    _ -> minisatRealRun tmpname stdoutName
+         
 -- Parse the output of minisat into answers about the formula.
 minisatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
 minisatParse varMapF answer
