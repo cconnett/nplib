@@ -20,7 +20,6 @@ def readFiles(*filenames):
                         if EVAL:
                             try:
                                 repo[(int(num), bound)] = eval(data)
-                                print 'Duplication on %d %s' % (int(num), bound)
                             except SyntaxError:
                                 print 'Read error on %d %s' % (int(num), bound)
                                 pass
