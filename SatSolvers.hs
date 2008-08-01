@@ -75,9 +75,9 @@ satA ss (cnf1, varMap1) =
                   ("p cnf " ++ myTrace (show numVars) (show numVars) ++ " " ++
                                myTrace (show numClauses) (show numClauses)) :
                   (map (unwords . (map show) . (++[0])) $ cnf1 ++ cnf2)
-          in
-          let readResult = unsafePerformIO $ run ss dimacs in
-          parse ss varMapUnion readResult
+          in unsafePerformIO $ do
+            readResult <- run ss dimacs
+            return $ parse ss varMapUnion readResult
   in closure
 
 zchaffRun dimacs = do
