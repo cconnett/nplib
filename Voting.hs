@@ -6,6 +6,7 @@ module Voting
 import Data.List
 import Data.Maybe
 import Data.Ord
+import Data.Ratio
 import Debug.Trace
 
 --Basic defitions
@@ -29,7 +30,7 @@ instance (Eq a) => Read (Rule a) where
     readsPrec _ "borda" = [(borda, "")]
     readsPrec _ "veto" = [(veto, "")]
     --readsPrec _ "bucklin" = [(bucklin, "")]
-    readsPrec _ "copeland" = [(copeland, "")]
+    readsPrec _ "copeland" = [(copeland (1%2), "")]
     readsPrec _ "maximin" = [(maximin, "")]
     readsPrec _ _ = error $ "Supported rules are\n" ++
                     (unlines rules)
@@ -52,8 +53,9 @@ marginOfVictory votes a b = (length $ filter (==True) results) -
                        (length $ filter (==False) results)
     where results = map (\vote -> beats vote a b) votes
 
-defeats :: (Eq a) => [Vote a] -> Candidate a -> Candidate a -> Bool
+defeats, ties :: (Eq a) => [Vote a] -> Candidate a -> Candidate a -> Bool
 defeats votes a b = marginOfVictory votes a b > 0
+ties votes a b = marginOfVictory votes a b == 0
 
 firstPlaceVotes :: (Eq a) => [Vote a] -> Candidate a -> Int
 firstPlaceVotes votes candidate = length $ filter (==candidate) $ map (head.fromVote) votes
@@ -120,11 +122,14 @@ maximin :: (Eq a) => Rule a
 maximin candidates votes = topGroupBy worstLoss candidates
     where worstLoss c = minimum (map (marginOfVictory votes c) (delete c candidates))
 
-copeland :: (Eq a) => Rule a
-copeland candidates votes = topGroupBy copelandScore candidates
-    where copelandScore c = length $ filter (c `defeatsV`) otherCandidates
+copeland :: (Eq a) => Rational -> Rule a
+copeland tieValue candidates votes = topGroupBy (copelandScore tieValue) candidates
+    where copelandScore tieValue c =
+              (length $ filter (c `defeatsV`) otherCandidates) +
+              (length $ filter (c `tiesV`) otherCandidates)
               where otherCandidates = delete c candidates
           defeatsV = defeats votes
+          tiesV = ties votes
 
 {-
 bucklin :: (Eq a) => Rule a
