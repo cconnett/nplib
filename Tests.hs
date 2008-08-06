@@ -36,23 +36,23 @@ flop (a,b) = (b,a)
 aux a@(Auxiliary _ _ _ _) = Just a
 aux p = Nothing
 
-mode = ZChaff
+mode = RSat
 
 prop_detrivializeEquivalence :: [Constraint Var] -> Bool
 prop_detrivializeEquivalence problem = solve BruteForce problem == solve BruteForce (detrivialize problem)
 
 prop_trivialIneqs :: Constraint Var -> Property
-prop_trivialIneqs i@(Inequality (summands,b)) = b >= 0 ==> solve mode problem
+prop_trivialIneqs i@(Inequality (summands,b)) = b >= 0 ==> fromJust $ solve mode problem
     where problem = detrivialize [cleanInequality i]
 prop_trivialIneqs (Formula f) = False ==> False
 
 prop_assignmentWorks :: Constraint (Proposition Var) -> Property
 prop_assignmentWorks i@(Inequality (summands, b)) =
-    let (satisfiable, trueVars) = solveA mode [cleanInequality i] in
+    let (satisfiable, trueVars) = first fromJust $ solveA mode [cleanInequality i] in
     satisfiable ==> (sum $ map ((M.fromList (map (flop . (second problemToProposition)) summands)) M.!) trueVars) <= b
 
 prop_assignmentWorks f@(Formula clauses) =
-    let (satisfiable, trueVars) = solveA mode [f] in
+    let (satisfiable, trueVars) = first fromJust $ solveA mode [f] in
     satisfiable ==> all (satisfiedBy trueVars) clauses
         where satisfiedBy trueVars (Clause []) = True
               satisfiedBy trueVars (Clause clause) = any (propMatch trueVars) clause
@@ -60,7 +60,7 @@ prop_assignmentWorks f@(Formula clauses) =
               propMatch trueVars (Not    p  ) = not $ propMatch trueVars p
 
 prop_noFloatingBits (problem::Problem Var) =
-    let (sat, trueProps) = solveA mode problem in
+    let (sat, trueProps) = first fromJust $ solveA mode problem in
     sat ==>
     let falseProps = (allProps problem) \\ trueProps in
     not (null $ trueProps ++ falseProps) ==>
@@ -77,15 +77,15 @@ prop_bruteForceAgreement :: Constraint Var -> Property
 prop_bruteForceAgreement c =
     classify (bfResult == True) "SAT" $
     classify (bfResult == False) "UNSAT" $
-    solve mode [c] == bfResult
-    where bfResult = solve BruteForce [c]
+    fromJust (solve mode [c]) == bfResult
+    where bfResult = fromJust $ solve BruteForce [c]
 
 prop_multipleConstraints :: Property
 prop_multipleConstraints = forAll multiConstraintProblem $ \p ->
-    let bfResult = solve BruteForce p in
+    let bfResult = fromJust $ solve BruteForce p in
     classify (bfResult == True) "SAT" $
     classify (bfResult == False) "UNSAT" $
-    solve mode (p::[Constraint Var]) == bfResult
+    fromJust (solve mode (p::[Constraint Var])) == bfResult
 
 {-
 prop_manipNumbers election = minimumManipulators (possibleWinnersByBruteForce (read "borda")) election ==
@@ -100,7 +100,7 @@ showAllTrues x = putStr $ unlines $ map show2 $ snd $ solveA mode $ [conjoin $ t
 freeTrues x = map fromProposition $ filter isPos $ snd $ solveA mode $ x
 reportIntermediateValues x = assignmentInterpretation (snd $ solveA mode $ [conjoin $ toSAT [x]]) x
 
-summarizeElection trueProps allTheProps =
+summarizeElection manipulators trueProps allTheProps =
     let print = tell . (++"\n") . show
         putStrLn = tell . (++"\n") in execWriter $ do
   let falseProps = allTheProps \\ trueProps
@@ -123,8 +123,10 @@ summarizeElection trueProps allTheProps =
   let pointStatusFalse = filter (("point " `isPrefixOf`) . sTag) $
                          filter isSurrogate $
                          falseProps
-  putStrLn "Votes:"
-  mapM_ print votes
+  putStrLn "Non-manipulator Votes:"
+  mapM_ print $ sort (take (length votes - manipulators) votes)
+  putStrLn "Manipulator Votes:"
+  mapM_ print $ sort (drop (length votes - manipulators) votes)
   putStrLn "Survivors at the beginning of each round:"
   mapM_ print survivors
   putStrLn "Surrogate info:"
@@ -139,7 +141,7 @@ reconstructVotes trueVoteData =
                     trueVoteData
      in sortBy (\c1 c2 -> if (PairwiseDatum v c1 c2) `elem` trueVoteData
                           then LT else GT) candidates
-         | v <- voters]
+         | v <- voters, (Counts v) `elem` trueVoteData]
     where voters = [1..maximum (map pwVoter $ filter isPairwiseDatum trueVoteData)]
 calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates | r <- [0..2]]
     where candidates = nub $ map pwCandidateA $ filter isPairwiseDatum tvd
@@ -165,25 +167,26 @@ prop_nestedInequalities (constraints' :: [Constraint Var]) =
                [Inequality ([(-1, propositionToProblem surrogate)
                                  | surrogate <- surrogates], -(numSatisfiable+1))]))
 -}
-getSummary = do
-  election <- e
-  let solver = possibleWinnersBySolverDebug RSat (scoringProtocolManipulation (\n -> [n-1,n-2..0])) election
-  let (sat, trueProps) = solver 0 election (Candidate 2)
+getSummary election = do
+  let manipulators = 1
+  let solver = possibleWinnersBySolverDebug RSat pluralityWithRunoffManipulation election
+  let (sat, trueProps) = first fromJust $ solver manipulators election (Candidate 1)
 
-  let summary = summarizeElection trueProps []
+  let summary = summarizeElection manipulators trueProps []
   if not sat then
         return "UNSAT"
      else
         return summary
 
 main = do
-  s <- getSummary
   election <- e
-  let (p1, p2) = (copelandManipulation 0 election)
-  let p = p1 ++ p2 election (Candidate 2)
-  writeFile "theProblem" (show p)
+  s <- getSummary election
+  --print $ possibleWinnersBySolver Minisat pluralityWithRunoffManipulation election 1 election
+  --let (p1, p2) = (pluralityWithRunoffManipulation election)
+  --let p = p1 ++ p2 election 1 (Candidate 1)
+  --writeFile "theProblem" (show p)
   writeFile "problemSummary1" s
-            
+
 {-
 main = do
   (problem, allTheProps, sat, trueProps, falseProps, trueVoteData) <- setup

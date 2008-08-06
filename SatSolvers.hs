@@ -132,14 +132,14 @@ rsatRun dimacs = do
 rsatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
 rsatParse varMapF answer =
     let assignmentLine = (lines answer) !! 2
-        answerLine = last $ lines answer
-        assignmentStrings = words assignmentLine
+        assignmentStrings = tail $ words assignmentLine
         assignments = map read (init assignmentStrings)
         varMapR = M.fromList $ map (\(a,b)->(b,a)) $
                   M.toList $ varMapF
-    in (if answer =~ "UNKNOWN" then Nothing else Just $
-        not $ answer =~ "UNSATISFIABLE",
-        mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments)
+        sat = if answer =~ "UNKNOWN" then
+                  Nothing else
+                  Just $ not $ answer =~ "UNSATISFIABLE"
+    in (sat, if sat == Just True then mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments else [])
 
 minisatRun dimacs = do
   (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"

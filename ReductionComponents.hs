@@ -169,7 +169,7 @@ losses candidates ballots
                                                (beats candidates ballots a c r $ \aBeatsC ->
                                                 [Formula [Clause [Merely $ Eliminated r c, aBeatsC]]])
                                       | a <- delete c candidates])
-                
+
 --shouldBeEliminated :: Proposition (VoteDatum Int) -> [Proposition (VoteDatum Int)] -> Int -> Candidate Int -> Embedding (VoteDatum Int)
 shouldBeEliminated allOthersEliminated victories
                    r c = (embedConstraint (show c ++ " should be eliminated for round " ++ show (r+1))

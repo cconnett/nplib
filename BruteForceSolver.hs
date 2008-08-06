@@ -13,7 +13,7 @@ import qualified Data.Set as S
 
 data BruteForce = BruteForce
 instance Solver BruteForce where
-    solveA s = bruteForceProblem
+    solveA s = first Just . bruteForceProblem
     
 bruteForceProblem :: (Ord a) => Problem a -> (Bool, [Proposition a])
 bruteForceProblem p
@@ -25,7 +25,7 @@ bruteForceProblem p
           vm = M.fromList $ zip (sort $ nub $ concat $ map allVars problem) [0..]
           vmr = M.fromList $ map (\(a,b) -> (b, a)) $ M.toList vm
           trueBits a = filter (testBit a) [0..M.size vm]
-                
+
 type VM a = M.Map (Proposition a) Int
 
 satisfies :: (Ord a) => VM a -> Problem a -> Int -> Bool

@@ -4,6 +4,8 @@ import VarMapping
 import ILPSAT
 import ILPSATReduction
 import Data.Bits
+import Control.Arrow
+import Data.Maybe
 import Utilities
 import Debug.Trace
 import Data.List
@@ -44,5 +46,5 @@ floatingBits problem =
              Formula [Clause [prop]] :
              [conjoin $ toSAT problem])
     in
-    filter (\prop -> all (solve ZChaff) (map compound [prop, neg prop]))
+    filter (\prop -> all (fromJust . (solve RSat)) (map compound [prop, neg prop]))
            (filter isAux allTheProps)
