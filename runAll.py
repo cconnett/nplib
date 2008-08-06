@@ -48,6 +48,11 @@ class instance(object):
         return '/tmp/bigElections/' + \
                '-'.join([self.distribution[0], str(self.cands), str(self.n)])
     @property
+    def archive(self):
+        return '/home/stu2/s1/cxc0117/thesis/bigElections.bz2/' + \
+               '-'.join([self.distribution[0], str(self.cands), str(self.n)]) + \
+               '.bz2'
+    @property
     def output(self):
         return ('/home/stu2/s1/cxc0117/thesis/run/data/' +
                 '-'.join([self.distribution[0], str(self.cands),
@@ -152,7 +157,11 @@ while instances:
                 break
             host = random.choice(availablehosts)
             #print host, 'is available'
-            args = ['ssh', '-x', host.replace('1','').replace('2',''),
+            networkhost = host.replace('1','').replace('2','')
+            Process(['ssh', '-x', networkhost,
+                     'bunzip2 -c %s > %s' %
+                     (instance.archive, instance.input)]).wait()
+            args = ['ssh', '-x', networkhost,
                     'ulimit -c 0; /usr/bin/nice -19 %s +RTS -c -RTS sat %s %s %s' %
                     (executable, instance.rule, instance.input, ' '.join(map(str,instance.missing)))]
             outputfilehandle = file(instance.output, 'a', 1)
