@@ -122,11 +122,11 @@ maximin :: (Eq a) => Rule a
 maximin candidates votes = topGroupBy worstLoss candidates
     where worstLoss c = minimum (map (marginOfVictory votes c) (delete c candidates))
 
-copeland :: (Eq a) => Rational -> Rule a
+copeland :: (Eq a) => Ratio Int -> Rule a
 copeland tieValue candidates votes = topGroupBy (copelandScore tieValue) candidates
     where copelandScore tieValue c =
-              (length $ filter (c `defeatsV`) otherCandidates) +
-              (length $ filter (c `tiesV`) otherCandidates)
+              ((length $ filter (c `defeatsV`) otherCandidates) % 1) +
+              tieValue * ((length $ filter (c `tiesV`) otherCandidates) % 1)
               where otherCandidates = delete c candidates
           defeatsV = defeats votes
           tiesV = ties votes
