@@ -102,20 +102,6 @@ possibleWinnersBySolver solver manipulationProblemEr prototypeElection =
                 (candidates, []) else
                 filter3 (candidateSolver votes manipulators) candidates
     in realSolver
-possibleWinnersBySolverDebug solver manipulationProblemEr prototypeElection =
-    let numVotes = length prototypeElection
-        candidates = extractCandidates prototypeElection
-        part1 = let clauses = sortNub $ fromFormula $
-                              conjoin (fst $ manipulationProblemEr prototypeElection)
-                    vm = varMap clauses
-                in (toDIMACS vm (Formula clauses), vm) in
-    let realSolver manipulators votes =
-            myTrace (show manipulators) $
-            let part2 = snd $ manipulationProblemEr prototypeElection
-                solveRest = startPartial solver part1 in
-            if manipulators > numVotes then (candidates, []) else
-            filter3 (\target -> (fst . solveRest) (part2 votes manipulators target)) candidates
-    in realSolver
 
 hybridSolver nullVotes solver1 solver2 = internalSolver
     where internalSolver manipulators votes
