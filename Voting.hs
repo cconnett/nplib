@@ -73,7 +73,7 @@ fromCandidate (Candidate c) = c
 
 equating f a b = f a == f b
 topGroupBy scoreFunction =
-    head. (groupBy (equating scoreFunction)).
+    head . (groupBy (equating scoreFunction)) .
             (sortBy (comparing ((0-).scoreFunction)))
                  
 -- Voting methods
@@ -81,7 +81,6 @@ scoringProtocol :: (Eq a, Integral k, Real g) => (k -> [g]) -> Rule a
 scoringProtocol s candidates votes = topGroupBy score candidates
     where score candidate = sum $ map (scoreList!!) $ mapMaybe (\vote -> (candidate `elemIndex` (fromVote vote))) votes
           scoreList = s $ fromIntegral $ length candidates
-          --candidates = extractCandidates votes
 
 plurality = scoringProtocol (\n -> 1:[0,0..])
 borda = scoringProtocol (\n -> [n-1, n-2 .. 0])

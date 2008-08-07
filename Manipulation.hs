@@ -43,7 +43,7 @@ possibleWinnersByBruteForce rule manipulators votes
     -- (in reasonable voting systems, assumed)
     | otherwise = myTrace ("brute forcing: " ++ show manipulators) $
                   (nub' (length candidates) $ concat $
-                   map (uniqueWinner.(rule candidates).(++votes).(manipulatorVotes candidates)) $
+                   map (uniqueWinner . (rule candidates) . (++votes) . (manipulatorVotes candidates)) $
                    manipulatorVoteRankWeights manipulators (factorial $ length candidates),
                    [])
     where candidates = extractCandidates votes
@@ -81,7 +81,7 @@ possibleWinnersBySolver solver manipulationProblemEr prototypeElection =
                 in (toDIMACS vm (Formula clauses), vm) in
     let realSolver manipulators votes =
             myTrace ("sat solving: " ++ show manipulators) $
-            let part2 = snd $! manipulationProblemEr votes
+            let part2 = snd $! manipulationProblemEr prototypeElection
                 solveRest = startPartial solver part1
                 statefulCache = unsafePerformIO $ newMVar (M.empty)
                 candidateSolver votes manipulators target = unsafePerformIO $ do
