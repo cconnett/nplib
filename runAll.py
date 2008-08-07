@@ -106,11 +106,8 @@ def dpScore(assignment):
                for (index, instance) in enumerate(instances[:len(assignment)]))
 
 dplimit = 30
-if len(hosts) > len(instances):
+if len(instances) <= dplimit:
     print 'Breaking up %d instances' % len(instances)
-    if len(instances) > dplimit:
-        print 'Over DP limit, limiting to %d instances' % dplimit
-        instances = instances[:dplimit]
 
     dp = [[None] * (len(hosts) + 1) for x in range(len(instances) + 1)]
 
