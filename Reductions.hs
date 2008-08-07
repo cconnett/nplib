@@ -71,7 +71,7 @@ pluralityWithRunoffManipulation votes =
           ineqNumber = fromIntegral $ hash cAdvancesTag in
       victories candidates ballots 0 c $ \cVictories ->
       embedProblem cAdvancesTag
-       (trans ineqNumber $ Inequality ([(-1, propositionToProblem vic) | vic <- cVictories], length candidates - 2)) $ \cAdvances ->
+       (trans ineqNumber $ Inequality ([(-1, propositionToProblem vic) | vic <- cVictories], -(length candidates - 2))) $ \cAdvances ->
       [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)]
           | c <- candidates] ++
      -- Second stage elimination: can be tolerant of ties in
