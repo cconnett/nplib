@@ -88,15 +88,16 @@ veto = scoringProtocol (\n -> (replicate (n-1) 1) ++ [0])
 amazonUnspun = scoringProtocol (\n -> map (1000/) [1..])
 scaleFree = scoringProtocol (\n -> map (\i -> exp (-i)) [1..])
 
-pluralityWithRunoff :: (Eq a) => Rule a
+pluralityWithRunoff :: (Show a, Eq a) => Rule a
 pluralityWithRunoff candidates votes =
     topGroupBy (firstPlaceVotes (map (`wrt`runoffCandidates) votes)) runoffCandidates
     where runoffCandidates = let groupA : ~(groupB:rest) =
                                      groupBy (equating (firstPlaceVotes votes)) $
                                      reverse $
                                      sortBy (comparing (firstPlaceVotes votes)) candidates
-                             in if length groupA >= 2 then groupA else groupA++groupB
-          --candidates = extractCandidates votes
+                             in if length groupA == 1 && length (groupA ++ groupB) <= 2 then
+                                    groupA ++ groupB else
+                                    groupA
 
 irv :: (Eq a) => Rule a
 irv candidates votes

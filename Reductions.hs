@@ -65,14 +65,18 @@ pluralityWithRunoffManipulation votes =
              eliminationBasics candidates rounds,
              firstPlacePoints candidates ballots rounds] ++
      -- Elimination: The candidates who advance are exactly those who
-     -- have at most 1 loss to another candidate.
+     -- have at least |C| - 2 victories
      concat
      [let cAdvancesTag = (show c ++ " advances to round 1")
           ineqNumber = fromIntegral $ hash cAdvancesTag in
-      losses candidates ballots 0 c $ \cLosses ->
-      embedProblem cAdvancesTag (trans ineqNumber $ Inequality ([(1, propositionToProblem loss) | loss <- cLosses], 1)) $ \cAdvances ->
-       [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)]
-      | c <- candidates] ++
+      victories candidates ballots 0 c $ \cVictories ->
+      embedProblem cAdvancesTag
+       (trans ineqNumber $ Inequality ([(-1, propositionToProblem vic) | vic <- cVictories], length candidates - 2)) $ \cAdvances ->
+      [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)]
+          | c <- candidates] ++
+     -- Second stage elimination: can be tolerant of ties in
+     -- elimination, because of requirement that all others be
+     -- eliminated.
      concat
      [let cAdvancesTag = (show c ++ " advances to round 2") in
       losses candidates ballots 1 c $ \cLosses ->
