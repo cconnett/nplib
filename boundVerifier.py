@@ -8,7 +8,7 @@ def consistent(lowers1, uppers1, lowers2, uppers2):
     return True
 
 for n in [32,64,128,256]:
-    for cands in [3,4,5]:
+    for cands in [3,5]:
         for distribution in ['uniform', 'condorcet', 'spatial']:
             for rule in ['borda','veto','irv','copeland','pluralityWithRunoff']:
                 if cands == 3 and rule == 'pluralityWithRunoff':
