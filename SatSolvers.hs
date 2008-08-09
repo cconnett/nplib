@@ -95,7 +95,7 @@ zchaffRun dimacs = do
   hClose result
   --getProcessExitCode satProcess
   waitForProcess satProcess
-  removeFile tmpname
+  --removeFile tmpname
   return readResult
 
 -- Parse the output of zchaff into answers about the formula.
@@ -125,7 +125,7 @@ rsatRun dimacs = do
   hClose result
   --getProcessExitCode satProcess
   waitForProcess satProcess
-  removeFile tmpname
+  --removeFile tmpname
   return readResult
 
 -- Parse the output of rsat into answers about the formula.

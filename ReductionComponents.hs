@@ -7,6 +7,7 @@ import ILPSATReduction
 import Embeddings
 import Hash
 import Data.Ratio
+import qualified Data.Map as M
 
 import Data.List
 
@@ -185,29 +186,33 @@ fullShouldBeEliminated candidates ballots
 -- Copeland voting components
 pairwiseVictory ballots c d =
     let tag = (show c ++ " defeats " ++ show d) in
-    embedProblem tag (trans (fromIntegral $ hash tag) $
-                      Inequality ([(-1, [Formula [Clause [Merely $ Counts v],
-                                                  Clause [Merely $ PairwiseDatum v c d]]]) | v <- ballots] ++
-                                  [( 1, [Formula [Clause [Merely $ Counts v],
-                                                  Clause [Merely $ PairwiseDatum v d c]]]) | v <- ballots], -1))
-pairwiseTie ballots c d =
-    embedProblem (show c ++ " ties " ++ show d) $
-    pairwiseVictory ballots c d $ \cBeatsD ->
-    pairwiseVictory ballots d c $ \dBeatsC ->
+    embedProblem' tag $ trans (fromIntegral $ hash tag) $
+                  Inequality ([(-1, [Formula [Clause [Merely $ Counts v],
+                                              Clause [Merely $ PairwiseDatum v c d]]]) | v <- ballots] ++
+                              [( 1, [Formula [Clause [Merely $ Counts v],
+                                              Clause [Merely $ PairwiseDatum v d c]]]) | v <- ballots], -1)
+pairwiseTie pvm c d =
+    let cBeatsD = fst $ pvm M.! (c,d)
+        dBeatsC = fst $ pvm M.! (d,c)
+    in
+      embedProblem (show c ++ " ties " ++ show d) $
     [Formula [Clause [neg cBeatsD], Clause [neg dBeatsC]]]
+makePairwiseVictoryMap candidates ballots =
+    M.fromList $ [((c,d), pairwiseVictory ballots c d) | c <- candidates, d <- candidates, c /= d]
 
-copelandScoreBetter tieValue candidates ballots c d =
+copelandScoreBetter tieValue pvm candidates c d =
     let wt = numerator tieValue
-        ww = denominator tieValue in
-    let tag = (show c ++ " has a better copeland score than " ++ show d) in
-    embedProblem tag $
-    pluralizeEmbedding [pairwiseVictory ballots d e | e <- delete d candidates] $ \dVics ->
-    pluralizeEmbedding [pairwiseVictory ballots c e | e <- delete c candidates] $ \cVics ->
-    pluralizeEmbedding [pairwiseTie     ballots d e | e <- delete d candidates] $ \dTies ->
-    pluralizeEmbedding [pairwiseTie     ballots c e | e <- delete c candidates] $ \cTies ->
-    trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
-    Inequality ([( ww, propositionToProblem dVic) | dVic <- dVics] ++
-                [(-ww, propositionToProblem cVic) | cVic <- cVics] ++
-                [( wt, propositionToProblem dTie) | dTie <- dTies] ++
-                [(-wt, propositionToProblem cTie) | cTie <- cTies],
-                 -1)
+        ww = denominator tieValue
+        tag = (show c ++ " has a better copeland score than " ++ show d)
+        dVics = [fst $ pvm M.! (d,e) | e <- delete d candidates]
+        cVics = [fst $ pvm M.! (c,e) | e <- delete c candidates]
+    in
+      embedProblem tag $
+       pluralizeEmbedding [pairwiseTie pvm d e | e <- delete d candidates] $ \dTies ->
+       pluralizeEmbedding [pairwiseTie pvm c d | e <- delete c candidates] $ \cTies ->
+       trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
+       Inequality ([( ww, propositionToProblem dVic) | dVic <- dVics] ++
+                   [(-ww, propositionToProblem cVic) | cVic <- cVics] ++
+                   [( wt, propositionToProblem dTie) | dTie <- dTies] ++
+                   [(-wt, propositionToProblem cTie) | cTie <- cTies],
+                   -1)

@@ -24,6 +24,7 @@ import Data.Maybe
 import Data.List
 import Data.Ord
 import Data.Bits
+import Data.Ratio
 import Debug.Trace
 import System.Exit
 import Text.Regex.Posix
@@ -93,9 +94,6 @@ prop_manipNumbers election = minimumManipulators (possibleWinnersByBruteForce (r
 -}
 prop_doubleNegation prop = prop == (neg $ neg $ prop)
 
-e = (liftM head) $
-    readElections "/home/chris/schoolwork/thesis/elections/u-3-5"
-
 showAllTrues x = putStr $ unlines $ map show2 $ snd $ solveA mode $ [conjoin $ toSAT x]
 freeTrues x = map fromProposition $ filter isPos $ snd $ solveA mode $ x
 reportIntermediateValues x = assignmentInterpretation (snd $ solveA mode $ [conjoin $ toSAT [x]]) x
@@ -143,7 +141,8 @@ reconstructVotes trueVoteData =
                           then LT else GT) candidates
          | v <- voters, (Counts v) `elem` trueVoteData]
     where voters = [1..maximum (map pwVoter $ filter isPairwiseDatum trueVoteData)]
-calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates | r <- [0..2]]
+calculateSurvivors tvd = [filter (not . (isEliminated r)) candidates
+                              | r <- sortNub $ map eRound $ filter isElimination tvd]
     where candidates = nub $ map pwCandidateA $ filter isPairwiseDatum tvd
           isEliminated r c = not $ null $
                              filter (\elimination -> eCandidate elimination == c && eRound elimination == r) $
@@ -167,9 +166,11 @@ prop_nestedInequalities (constraints' :: [Constraint Var]) =
                [Inequality ([(-1, propositionToProblem surrogate)
                                  | surrogate <- surrogates], -(numSatisfiable+1))]))
 -}
+e = (liftM head) $
+    readElections "/tmp/bigElections/u-3-2"
 getSummary election = do
-  let manipulators = 1
-  let solver = possibleWinnersBySolverDebug RSat pluralityWithRunoffManipulation election
+  let manipulators = 2
+  let solver = possibleWinnersBySolverDebug RSat (copelandManipulation (1%2)) election
   let (sat, trueProps) = first fromJust $ solver manipulators election (Candidate 1)
 
   let summary = summarizeElection manipulators trueProps []
@@ -182,8 +183,8 @@ main = do
   election <- e
   s <- getSummary election
   --print $ possibleWinnersBySolver Minisat pluralityWithRunoffManipulation election 1 election
-  --let (p1, p2) = (pluralityWithRunoffManipulation election)
-  --let p = p1 ++ p2 election 1 (Candidate 1)
+  --let (p1, p2) = ((copelandManipulation (1%2)) election)
+  --let p = p1 ++ p2 election 2 (Candidate 1)
   --writeFile "theProblem" (show p)
   writeFile "problemSummary1" s
 

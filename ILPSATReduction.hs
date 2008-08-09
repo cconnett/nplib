@@ -32,7 +32,7 @@ trans ineqNumber it@(Inequality (summands, b)) =
     -- absolute sum.  Trans-ing functions will emit (neg variable)
     -- instead of variable when they detect the negative coefficient.
     in
-      pluralizeEmbedding [embedProblem ("auto-embedding " ++ show pr) pr | pr <- problems] $
+      pluralizeEmbedding [embedProblem ("auto-embedding " ++ filter (/='\n') (show pr)) pr | pr <- problems] $
        \props ->
            let finalSummands = zip coeffs props in
             [pushTL $

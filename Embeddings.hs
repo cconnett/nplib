@@ -16,18 +16,21 @@ type Embedding a = (Proposition a -> Problem a) -> Problem a
 -- formula being embedded.  The resulting constraint will be a formula
 -- respecting all of the above.
 embedFormula :: (Show a) => String -> Constraint a -> Embedding a
-embedFormula tag f surrogateExpr = embedFormula' tag surrogateExpr (cleanFormula f)
+embedFormula tag (Formula [Clause [p]]) surrogateExpr = map cleanFormula (surrogateExpr p)
+embedFormula tag formula@(Formula f) surrogateExpr =
+    let (s, equivalenceConstraints) = embedFormula' tag (cleanFormula formula)
+    in
+      (map cleanFormula $ surrogateExpr s) ++ equivalenceConstraints
 
-embedFormula' :: forall a. (Show a) => String -> (Proposition a -> Problem a) -> Constraint a -> Problem a
-embedFormula' tag surrogateExpr formula@(Formula [Clause [p]]) = map cleanFormula (surrogateExpr p)
-embedFormula' tag surrogateExpr (Formula formula) =
+embedFormula' :: forall a. (Show a) => String -> Constraint a -> (Proposition a, Problem a)
+embedFormula' tag (Formula formula) =
     let s = Surrogate tag (Formula formula) :: Proposition a
         equivalenceConstraints = TopFormula [(Clause $ neg s:(fromClause clause)) | clause <- formula] :
                                  (embedConstraints (map (const "") formula) (map negateClause formula) $ \ss ->
                                   [TopFormula [Clause $ ss ++ [s]]])
-    in equivalenceConstraints ++ (map cleanFormula $ surrogateExpr s)
+    in (s, equivalenceConstraints)
 
-embedTopFormula tag tf surrogateExpr = tf : surrogateExpr (Surrogate tag tf)
+embedTopFormula tag tf surrogateExpr = [tf]
 -- For embedInequality, would need a ineqNumber for trans and a tag to
 -- embed.  Instead, just make the caller call trans with the
 -- ineqNumber and call embedProblem with a tag.
@@ -53,13 +56,17 @@ embedConstraints' tags acc constraints multiSurrogateExpr =
     embedConstraint (head tags) (head constraints) $ \surrogate ->
     embedConstraints' (tail tags) (surrogate : acc) (tail constraints) multiSurrogateExpr
 
-embedProblem :: (Show a) => String -> Problem a -> (Proposition a -> Problem a) -> Problem a
+embedProblem :: (Show a) => String -> Problem a -> Embedding a
 embedProblem tag problem surrogateExpr =
-    let (tfs, others) = partition isTopFormula problem in
-    embedFormula tag (conjoin others) $ \othersProposition ->
-           [TopFormula (concatMap fromFormula tfs)] ++
-           surrogateExpr othersProposition
-           
+    let (s, equivalenceConstraints) = embedProblem' tag problem
+    in
+      surrogateExpr s ++ equivalenceConstraints
+embedProblem' tag problem =
+    let (tfs, others) = partition isTopFormula problem
+        (s, equivalenceConstraints) = embedFormula' tag (conjoin others)
+    in
+      (s, TopFormula (concatMap fromFormula tfs) : equivalenceConstraints)
+
 negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
                           
 pluralizeEmbedding embeddings multiSurrogateExpr = pluralizeEmbedding' (reverse embeddings) [] multiSurrogateExpr
