@@ -6,7 +6,6 @@ module Main
 import Manipulation
 import ILPSAT
 import SatSolvers
---import GLPKSolver
 import System
 import System.IO
 import Voting

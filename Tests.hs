@@ -90,7 +90,7 @@ prop_multipleConstraints = forAll multiConstraintProblem $ \p ->
 
 {-
 prop_manipNumbers election = minimumManipulators (possibleWinnersByBruteForce (read "borda")) election ==
-                             minimumManipulators (possibleWinnersBySolver GLPK (read "borda")) election
+                             minimumManipulators (possibleWinnersBySolver RSat (read "borda")) election
 -}
 prop_doubleNegation prop = prop == (neg $ neg $ prop)
 
