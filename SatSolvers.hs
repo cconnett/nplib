@@ -2,83 +2,63 @@
 
 module SatSolvers where
 
-import VarMapping
-import ILPSAT
-import ILPSATReduction
-import Solvers
+import SAT
 
 import Text.Regex.Posix
+import Control.Arrow
 import Data.Maybe
+import Data.List
 import System.IO
 import System.Directory
 import System.Process
 import System.Cmd
 import System.Exit
+import qualified Data.IntMap as IM
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Foreign (unsafePerformIO)
 
 import Utilities
 
-solversHome = "/home/stu2/s1/cxc0117/thesis/sat.x86/"
+--solversHome = "/home/stu2/s1/cxc0117/thesis/sat.x86/"
+solversHome = "/home/chris/schoolwork/thesis/sat/"
 
-class SatSolver ss where
-    run :: ss -> String -> IO String
-    parse :: (Ord a, Read b, Integral b) =>
-             ss -> VarMap a b -> String -> (Maybe Bool, [Proposition a])
+-- Solve a problem and return its satisfiablility, plus a list of
+-- the variables assigned a truth value of true.
+{-# NOINLINE solveA #-}
+solveA :: SatSolver -> (Int, Formula) -> (Maybe Bool, IM.IntMap Bool)
+solveA ss (numVars, cnf) = unsafePerformIO $ run ss (toDIMACS (numVars, cnf))
 
-data ZChaff = ZChaff
-instance Solver ZChaff where
-    startPartial s = satA s
-instance SatSolver ZChaff where
-    run ss = zchaffRun
-    parse ss = zchaffParse
+-- Solve a problem and return its satisfiablility.
+solve :: SatSolver -> (Int, Formula) -> Maybe Bool
+solve s problem = fst (solveA s problem)
 
-data RSat = RSat
-instance Solver RSat where
-    startPartial s = satA s
-instance SatSolver RSat where
-    run ss = rsatRun
-    parse ss = rsatParse
-
-data Minisat = Minisat
-instance Solver Minisat where
-    startPartial s = satA s
-instance SatSolver Minisat where
-    run ss = minisatRun
-    parse ss = minisatParse
+data SatSolver = ZChaff | RSat | Minisat
 
 -- Conversion of Problem instances to DIMACS (CNF-SAT) formats.
-toDIMACS varMap (Formula clauses) = toDIMACS' varMap clauses
-toDIMACS varMap (TopFormula clauses) = toDIMACS' varMap clauses
-toDIMACS' varMap clauses = id $!
-     [map transformProposition $ fromClause clause
-          | clause <- clauses]
-        where transformProposition (Not p) = -(transformProposition p)
-              transformProposition p = (varMap M.! p)
+toDIMACS :: (Int, Formula) -> String
+toDIMACS (numVars, formula) =
+    let cnf = toCNF formula
+        numClauses = traceIt $ length $ fromFormula formula
+    in ("p cnf " ++
+        (show $ traceIt numVars) ++ " " ++
+        (show numClauses) ++ "\n") ++
+       (unlines $ map (unwords . (map show) . (++[0])) cnf)
+
+toCNF :: Formula -> [[Int]]
+toCNF (Formula clauses) = [map transformProposition $ fromClause clause
+                     | clause <- clauses]
+        where transformProposition p =
+                  (if isNeg p then negate else id) $ propositionVar p
+
+run :: SatSolver -> String -> IO (Maybe Bool, IM.IntMap Bool)
+run ZChaff = zchaffRun
+run RSat = rsatRun
+run Minisat = minisatRun
 
 -- Runs a SAT constraint through a sat solver and returns its answer
 -- regarding satisfiability, plus a list of the variables assigned a
 -- truth value of true.
-
-{-# NOINLINE satA #-}
-satA :: (SatSolver ss, Show a, Ord a, Read b, Integral b) =>
-        ss -> ([[b]], VarMap a b) -> Problem a -> (Maybe Bool, [Proposition a])
-satA ss (cnf1, varMap1) =
-  let closure problem2 =
-          let formula2 = conjoin $ toSAT (detrivialize problem2)
-              varMapUnion = extendVarMap varMap1 (fromFormula formula2)
-              cnf2 = toDIMACS varMapUnion formula2
-              numVars = M.size varMapUnion
-              numClauses = length cnf1 + length cnf2
-              dimacs = unlines $
-                  ("p cnf " ++ myTrace (show numVars) (show numVars) ++ " " ++
-                               myTrace (show numClauses) (show numClauses)) :
-                  (map (unwords . (map show) . (++[0])) $ cnf1 ++ cnf2)
-          in unsafePerformIO $ do
-            readResult <- run ss dimacs
-            return $ parse ss varMapUnion readResult
-  in closure
 
 zchaffRun dimacs = do
   (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"
@@ -91,83 +71,106 @@ zchaffRun dimacs = do
   hClose inp
   hClose err
   readResult <- hGetContents result
-  print (filter (\x -> True) readResult)
+  putStr $ filter (const False) readResult
   hClose result
   --getProcessExitCode satProcess
   waitForProcess satProcess
-  --removeFile tmpname
-  return readResult
+  removeFile tmpname
+  return $ zchaffParse readResult
 
 -- Parse the output of zchaff into answers about the formula.
-zchaffParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
-zchaffParse varMapF answer =
+zchaffParse :: String -> (Maybe Bool, IM.IntMap Bool)
+zchaffParse answer =
     let assignmentLine = (lines answer) !! 5
         answerLine = last $ lines answer
         assignmentStrings = words assignmentLine
         assignments = map read (take (length assignmentStrings - 4) $ assignmentStrings)
-        varMapR = M.fromList $ map (\(a,b)->(b,a)) $
-                  M.toList $ varMapF
-    in (Just $ not $ answer =~ "UNSAT",
-        mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments)
+        (trues, falses) = second (map abs) $ partition (>0) assignments
+    in (case answer of
+          _ | answer =~ "UNSAT" -> Just False
+          _ | answer =~ "SAT" -> Just True
+          _ | otherwise -> Nothing,
+        IM.fromList $
+              [(var, True) | var <- trues] ++
+              [(var, False) | var <- falses])
 
 rsatRun dimacs = do
-  (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"
+  (dimacsName, handle) <- openTempFile "/tmp/" "sat.cnf"
   hPutStr handle dimacs
   hClose handle
   (inp, result, err, satProcess) <-
       runInteractiveProcess (solversHome ++ "rsat_2.01_release/rsat")
-                   [tmpname, "-s", "-t", "60"]
+                   [dimacsName, "-s", "-t", "60"]
                    Nothing Nothing
   hClose inp
   hClose err
   readResult <- hGetContents result
-  putStr (filter (\x -> False) readResult)
+  putStr $ filter (const False) readResult
   hClose result
   --getProcessExitCode satProcess
   waitForProcess satProcess
-  --removeFile tmpname
-  return readResult
+  --removeFile dimacsName
+  return $ rsatParse readResult
 
 -- Parse the output of rsat into answers about the formula.
-rsatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
-rsatParse varMapF answer =
+rsatParse :: String -> (Maybe Bool, IM.IntMap Bool)
+rsatParse answer =
     let assignmentLine = (lines answer) !! 2
         assignmentStrings = tail $ words assignmentLine
         assignments = map read (init assignmentStrings)
-        varMapR = M.fromList $ map (\(a,b)->(b,a)) $
-                  M.toList $ varMapF
-        sat = if answer =~ "UNKNOWN" then
-                  Nothing else
-                  Just $ not $ answer =~ "UNSATISFIABLE"
-    in (sat, if sat == Just True then mapMaybe ((flip M.lookup) varMapR) $ filter (>0) assignments else [])
+        (trues, falses) = second (map abs) $ partition (>0) assignments
+        sat = case answer of
+                _ | answer =~ "UNSATISFIABLE" -> Just False
+                _ | answer =~ "SATISFIABLE" -> Just True
+                _ | otherwise -> Nothing
+    in (sat,
+           IM.fromList $
+                 [(var, True) | var <- trues] ++
+                 [(var, False) | var <- falses])
 
 minisatRun dimacs = do
-  (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"
+  (dimacsName, handle) <- openTempFile "/tmp/" "sat.cnf"
   hPutStr handle dimacs
   hClose handle
   (stdoutName, handle2) <- openTempFile "/tmp/" "minisat.stdout"
   hClose handle2
-  minisatRealRun tmpname stdoutName
+  (solutionName, handle3) <- openTempFile "/tmp/" "minisat.sol"
+  hClose handle3
+  minisatRealRun dimacsName stdoutName solutionName
   readResult <- readFile stdoutName
+  readSolution <- readFile solutionName
   putStr (filter (const False) readResult)
-  removeFile tmpname
+  removeFile dimacsName
   removeFile stdoutName
-  return readResult
+  removeFile solutionName
+  return $ minisatParse readResult solutionName
 
-minisatRealRun tmpname stdoutName = do
+minisatRealRun dimacsName stdoutName solutionName = do
   status <- system ("bash -c 'ulimit -t 60; " ++
-                   solversHome ++ "minisat/simp/minisat_release " ++ tmpname ++
-                   " 2> /dev/null 1> " ++ stdoutName ++
+                   solversHome ++ "minisat/simp/minisat_release " ++
+                   dimacsName ++ " " ++
+                   solutionName ++ " " ++
+                   "2> /dev/null 1> " ++ stdoutName ++
                    "'")
   case status of
     ExitFailure 10 -> return ()
     ExitFailure 20 -> return ()
     ExitFailure 158 -> return ()
-    _ -> minisatRealRun tmpname stdoutName
+    _ -> minisatRealRun dimacsName stdoutName solutionName
          
 -- Parse the output of minisat into answers about the formula.
-minisatParse :: (Ord a, Read b, Integral b) => VarMap a b -> String -> (Maybe Bool, [Proposition a])
-minisatParse varMapF answer
-    | answer =~ "UNSATISFIABLE" = (Just False, [])
-    | answer =~ "SATISFIABLE" = (Just True, [])
-    | otherwise = (Nothing, [])
+minisatParse :: String -> String -> (Maybe Bool, IM.IntMap Bool)
+minisatParse answer solution = 
+    let assignmentLine = (lines answer) !! 2
+        assignmentStrings = words assignmentLine
+        assignments = map read (init assignmentStrings)
+        (trues, falses) = second (map abs) $ partition (>0) assignments
+        sat = case answer of
+                _ | answer =~ "UNSATISFIABLE" -> Just False
+                _ | answer =~ "SATISFIABLE" -> Just True
+                _ | otherwise -> Nothing
+    in (sat,
+           IM.fromList $
+                 [(var, True) | var <- trues] ++
+                 [(var, False) | var <- falses])
+

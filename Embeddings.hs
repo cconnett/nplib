@@ -15,6 +15,7 @@ type Embedding a = (Proposition a -> Problem a) -> Problem a
 -- to the surrogate expression will be equal to the truth value of the
 -- formula being embedded.  The resulting constraint will be a formula
 -- respecting all of the above.
+
 embedFormula :: (Show a) => String -> Constraint a -> Embedding a
 embedFormula tag (Formula [Clause [p]]) surrogateExpr = map cleanFormula (surrogateExpr p)
 embedFormula tag formula@(Formula f) surrogateExpr =

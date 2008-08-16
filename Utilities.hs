@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts -fno-monomorphism-restriction #-}
+
 module Utilities where
 
 import Maybe
@@ -10,7 +12,7 @@ import Debug.Trace
 import Test.QuickCheck
 import Foreign (unsafePerformIO)
 
-debug = False
+debug = True
 myTrace = if debug then trace else flip const
 traceIt s = myTrace ("\nTRACEIT:" ++ show s) s
 

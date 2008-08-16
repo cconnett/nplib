@@ -10,20 +10,8 @@ import qualified Data.HashTable as HT
 import Debug.Trace
 import Utilities
 
--- Conversion from ILP to SAT, ala Warners, Joost, "A Linear-Time
--- Transformation of Linear Inequalities into Conjunctive Normal
--- Form."  The resulting Constraint is a Formula.
-toSAT :: Show a => Problem a -> Problem a
-toSAT p = concatMap convert (zip [0..] p)
-    where convert (i, Formula formula) = [Formula formula]
-          convert (i, TopFormula formula) = [TopFormula formula]
-          convert (i, Inequality inequality) = trans i (Inequality inequality)
-
--- Warners' [War98] primary function --- converts an ILP inequality to a SAT formula
-trans :: Show a => Int -> Constraint a -> Problem a
+trans :: Show a => Int -> Inequality a -> Problem a
 trans ineqNumber it@(Inequality (summands, b)) =
-    --trace ("transing " ++ show it ++ " yields") $
-    --traceIt $
     let summands' = filter ((/=0) . fst) summands
         problems = map snd summands'
         coeffs = map fst summands'
