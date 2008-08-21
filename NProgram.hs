@@ -35,6 +35,11 @@ runNProgram ss nprogramComputation =
                       _ -> error "UNSAT"
     in (satisfiable, (retriever, theNVars))
 
+evalNProgram ss nprogramComputation =
+    let (satisfiable, (get, structure)) = runNProgram ss nprogramComputation
+    in
+      (satisfiable, fmap get structure)
+
 extractTruths :: NVar v => IM.IntMap Bool -> v -> [Bool]
 extractTruths truthMap a = map (truthMap IM.!) (toVars a)
 
