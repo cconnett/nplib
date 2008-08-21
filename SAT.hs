@@ -46,9 +46,9 @@ fromFormula (Formula f) = f
 
 conjoin formulas = Formula $ concatMap fromFormula formulas
 
-true v = Formula [Clause [Merely v]]
-false v = Formula [Clause [Not v]]
-equivalent p1 p2 = Formula [Clause [neg p1, p2], Clause [p1, neg p2]]
+makeTrue v = Formula [Clause [Merely v]]
+makeFalse v = Formula [Clause [Not v]]
+makeEquivalent v1 v2 = Formula [Clause [Not v1, Merely v2], Clause [Merely v1, Not v2]]
 
 -- Show instances for Constraint and helper types
 instance Show Formula where

@@ -36,7 +36,10 @@ import Utilities
 
 newtype NInt = NInt [Var]
 newtype NUInt = NUInt [Var]
+
 newtype NBool = NBool [Var]
+false = NBool [falseVar]
+true = NBool [trueVar]
 
 instance NVar NInt where
     toVars (NInt vars) = vars
@@ -56,7 +59,7 @@ instance NVar NBool where
 instance Interpret NBool Bool where
     interpret v = asBool
 
-               
+
 class NVar k => NIntegral k where
     new :: Int -> State NProgram k
     new width = do
@@ -67,10 +70,10 @@ class NVar k => NIntegral k where
     fromInteger i = do
       it <- new 16
       let varStatuses = map (first (testBit i)) $ zip [width it - 1, width it - 2 .. 0] (toVars it)
-      forM_ varStatuses $ \(isTrue, var) ->
-          assert $ (if isTrue then true else false) var
+      forM_ varStatuses $ \(isSet, var) ->
+          assert $ (if isSet then makeTrue else makeFalse) var
       return it
-    
+
     width :: k -> Int
     width = length . toVars
 

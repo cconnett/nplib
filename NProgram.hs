@@ -14,9 +14,14 @@ class NVar v where
 
 class NVar v => Interpret v d where
     interpret :: v -> [Bool] -> d
-   
+
+-- Empty program has first and second variables as a reference false
+-- and true respectively.
 emptyNProgram :: NProgram
-emptyNProgram = NProgram (Formula []) [1..]
+emptyNProgram = NProgram (Formula [Clause [Not 1], Clause [Merely 2]]) [3..]
+
+falseVar = 1 :: Var
+trueVar = 2 :: Var
 
 runNProgram :: Interpret v d => SatSolver -> State NProgram a -> (Maybe Bool, (v -> d, a))
 runNProgram ss nprogramComputation =
