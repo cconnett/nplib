@@ -8,6 +8,8 @@ import qualified Data.IntMap as IM
 
 data NProgram = NProgram Formula [Var]
 
+type Stateful a = State NProgram a
+
 class NVar v where
     toVars :: v -> [Var]
     fromVars :: [Var] -> v

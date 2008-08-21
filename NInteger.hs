@@ -108,8 +108,13 @@ extendToCommonWidth a b c =
       (extendTo commonWidth a,
        extendTo commonWidth b,
        extendTo commonWidth c)
-      
-add :: NIntegral k => k -> k -> k -> State NProgram Formula
+
+-- only works on same width integrals
+equal :: NIntegral k => k -> k -> Stateful Formula
+equal a b = (liftM conjoin) $
+            forM (zip (toVars a) (toVars b)) (return . uncurry makeEquivalent)
+
+add :: NIntegral k => k -> k -> k -> Stateful Formula
 add c a b = do
   let (a', b', c') = extendToCommonWidth a b c
   let theWidth = width a' -- == width b' == width c'
@@ -149,4 +154,9 @@ add c a b = do
               conjoin $ map setKthResult [1 .. theWidth - 1],
               conjoin $ map setKthCarry [2 .. theWidth - 1]]
 
---mul :: NIntegral k => k -> k -> k -> Formula
+-- c == a - b <=> a == b + c
+sub c a b = add a b c
+
+-- Arithmetic shift left and right
+x `shl` i = fromVars . (++ replicate i falseVar) . toVars
+x `shr` i = fromVars . reverse . drop i . reverse . toVars
