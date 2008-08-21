@@ -143,25 +143,27 @@ minisatRun dimacs = do
   removeFile dimacsName
   removeFile stdoutName
   removeFile solutionName
-  return $ minisatParse readResult solutionName
+  return $ minisatParse readResult readSolution
 
 minisatRealRun dimacsName stdoutName solutionName = do
-  status <- system ("bash -c 'ulimit -t 60; " ++
-                   solversHome ++ "minisat/simp/minisat_release " ++
+  let cmd = "bash -c 'ulimit -t 60; " ++
+                   solversHome ++ "minisat/simp/minisat " ++
                    dimacsName ++ " " ++
                    solutionName ++ " " ++
                    "2> /dev/null 1> " ++ stdoutName ++
-                   "'")
+                   "'"
+  status <- system cmd
   case status of
+    ExitSuccess -> return ()
     ExitFailure 10 -> return ()
     ExitFailure 20 -> return ()
     ExitFailure 158 -> return ()
-    _ -> minisatRealRun dimacsName stdoutName solutionName
+    _ -> error "Minisat failure" --minisatRealRun dimacsName stdoutName solutionName
          
 -- Parse the output of minisat into answers about the formula.
 minisatParse :: String -> String -> (Maybe Bool, IM.IntMap Bool)
-minisatParse answer solution = 
-    let assignmentLine = (lines answer) !! 2
+minisatParse answer solution =
+    let assignmentLine = myTrace solution $ (lines solution) !! 1
         assignmentStrings = words assignmentLine
         assignments = map read (init assignmentStrings)
         (trues, falses) = second (map abs) $ partition (>0) assignments
