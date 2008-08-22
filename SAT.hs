@@ -49,6 +49,7 @@ conjoin formulas = Formula $ concatMap fromFormula formulas
 makeTrue v = Formula [Clause [Merely v]]
 makeFalse v = Formula [Clause [Not v]]
 makeEquivalent v1 v2 = Formula [Clause [Not v1, Merely v2], Clause [Merely v1, Not v2]]
+makeOpposed v1 v2 = Formula [Clause [Merely v1, Merely v2], Clause [Not v1, Not v2]]
 
 -- Show instances for Constraint and helper types
 instance Show Formula where
