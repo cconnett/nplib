@@ -27,9 +27,13 @@ module NInteger where
 
 import NProgram
 import SAT
+import Embeddings
+
+import Prelude hiding (negate)
 import Control.Monad.State
 import Control.Arrow
-import Data.Bits
+import Data.Bits ((.|.))
+import qualified Data.Bits as Bits
 import Data.Word
 
 import Utilities
@@ -69,7 +73,7 @@ class NVar k => NIntegral k where
     fromInteger :: Integer -> Stateful k
     fromInteger i = do
       it <- new 16
-      let varStatuses = map (first (testBit i)) $ zip [width it - 1, width it - 2 .. 0] (toVars it)
+      let varStatuses = map (first (Bits.testBit i)) $ zip [width it - 1, width it - 2 .. 0] (toVars it)
       forM_ varStatuses $ \(isSet, var) ->
           assert $ (if isSet then makeTrue else makeFalse) var
       return it
@@ -94,7 +98,7 @@ trueIndices bools = map fst $ filter snd $ zip [0..] (reverse bools)
 asBool = or
 
 asUnsignedInteger :: [Bool] -> Integer
-asUnsignedInteger bools = foldl (.|.) 0 (map bit $ trueIndices bools)
+asUnsignedInteger bools = foldl (.|.) 0 (map Bits.bit $ trueIndices bools)
 
 asSignedInteger :: [Bool] -> Integer
 asSignedInteger bools =
@@ -103,7 +107,7 @@ asSignedInteger bools =
     in
       if not signBit then
           magnitude else
-          complement magnitude + 1
+          Bits.complement magnitude + 1
 
 extendToCommonWidth a b c =
     let commonWidth = maximum $ map width $ [a,b,c]
@@ -159,7 +163,26 @@ add c a b = do
 
 -- c == a - b <=> a == b + c
 sub c a b = add a b c
+-- Take the two's complement of x
+negate :: NIntegral k => k -> Stateful k
+negate x = do
+  onesComplementX <- new (width x)
+  forM_ (zip (toVars x) (toVars onesComplementX)) $ \(v, ocv) ->
+      assert $ makeOpposed v ocv
+  twosComplementX <- new (width x)
+  let one = fromVars [trueVar]
+  add twosComplementX onesComplementX one >>= assert
+  return twosComplementX
 
--- Arithmetic shift left and right
-x `shl` i = fromVars . (++ replicate i falseVar) . toVars
-x `shr` i = fromVars . reverse . drop i . reverse . toVars
+-- Logical shift left and right
+shiftL, shiftR, ashiftR :: NIntegral k => k -> Int -> k
+x `shiftL` i = fromVars . drop i . (++ replicate i falseVar) . toVars $ x
+x `shiftR` i = fromVars . (replicate i falseVar ++) . dropLast i . toVars $ x
+dropLast i = reverse . drop i . reverse
+-- Arithmetic shift right (sign bit extension)
+x `ashiftR` i =
+  let vars = toVars x
+  in fromVars . (replicate i (head vars) ++) . dropLast i . toVars $ x
+
+--mul :: NIntegral k => k -> k -> k -> Stateful Formula
+--mul =
