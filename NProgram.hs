@@ -7,6 +7,8 @@ import SatSolvers
 import qualified Data.IntMap as IM
 
 data NProgram = NProgram Formula [Var]
+instance Show NProgram where
+    show (NProgram formula _) = show formula
 
 type Stateful a = State NProgram a
 

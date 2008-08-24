@@ -61,12 +61,12 @@ instance Interpret NBool Bool where
 
 
 class NVar k => NIntegral k where
-    new :: Int -> State NProgram k
+    new :: Int -> Stateful k
     new width = do
       newVars <- takeSatVars width
       return $ fromVars newVars
 
-    fromInteger :: Integer -> State NProgram k
+    fromInteger :: Integer -> Stateful k
     fromInteger i = do
       it <- new 16
       let varStatuses = map (first (testBit i)) $ zip [width it - 1, width it - 2 .. 0] (toVars it)
@@ -81,7 +81,10 @@ class NVar k => NIntegral k where
     extendTo bits k =
         let vars = toVars k in
         fromVars $ replicate (bits - length vars) (head vars) ++ vars
-    
+
+    testBit :: k -> Int -> Var
+    k `testBit` i = reverse (toVars k) !! i
+
 instance NIntegral NInt
 instance NIntegral NUInt
 instance NIntegral NBool
