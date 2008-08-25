@@ -21,7 +21,7 @@ if' cond then' else' = do
   assert $ makeOpposed condVar elseVar
 
 embedFormula :: Formula -> Stateful Var
-embedFormula (Formula []) = return trueVar
+embedFormula (Formula []) = return true
 embedFormula (Formula [Clause [Merely v]]) = return v
 embedFormula (Formula [Clause [Not v]]) = do
   s <- takeSatVar

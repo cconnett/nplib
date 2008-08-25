@@ -24,8 +24,8 @@ class NVar v => Interpret v d where
 emptyNProgram :: NProgram
 emptyNProgram = NProgram (Formula [Clause [Not 1], Clause [Merely 2]]) [3..]
 
-falseVar = 1 :: Var
-trueVar = 2 :: Var
+false = 1 :: Var
+true = 2 :: Var
 
 runNProgram :: Interpret v d => SatSolver -> State NProgram a -> (Maybe Bool, (v -> d, a))
 runNProgram ss nprogramComputation =

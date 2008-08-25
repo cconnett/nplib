@@ -41,10 +41,6 @@ import Utilities
 newtype NInt = NInt [Var]
 newtype NUInt = NUInt [Var]
 
-newtype NBool = NBool [Var]
-false = NBool [falseVar]
-true = NBool [trueVar]
-
 instance NVar NInt where
     toVars (NInt vars) = vars
     fromVars = NInt
@@ -57,10 +53,10 @@ instance NVar NUInt where
 instance Interpret NUInt Int where
     interpret v = fromIntegral . asUnsignedInteger
     
-instance NVar NBool where
-    toVars (NBool vars) = vars
-    fromVars = NBool
-instance Interpret NBool Bool where
+instance NVar Var where
+    toVars var = [var]
+    fromVars vars = head vars
+instance Interpret Var Bool where
     interpret v = asBool
 
 
@@ -91,7 +87,7 @@ class NVar k => NIntegral k where
 
 instance NIntegral NInt
 instance NIntegral NUInt
-instance NIntegral NBool
+instance NIntegral Var
 
 trueIndices bools = map fst $ filter snd $ zip [0..] (reverse bools)
 
@@ -170,14 +166,14 @@ negate x = do
   forM_ (zip (toVars x) (toVars onesComplementX)) $ \(v, ocv) ->
       assert $ makeOpposed v ocv
   twosComplementX <- new (width x)
-  let one = fromVars [trueVar]
+  let one = fromVars [true]
   add twosComplementX onesComplementX one >>= assert
   return twosComplementX
 
 -- Logical shift left and right
 shiftL, shiftR, ashiftR :: NIntegral k => k -> Int -> k
-x `shiftL` i = fromVars . drop i . (++ replicate i falseVar) . toVars $ x
-x `shiftR` i = fromVars . (replicate i falseVar ++) . dropLast i . toVars $ x
+x `shiftL` i = fromVars . drop i . (++ replicate i false) . toVars $ x
+x `shiftR` i = fromVars . (replicate i false ++) . dropLast i . toVars $ x
 dropLast i = reverse . drop i . reverse
 -- Arithmetic shift right (sign bit extension)
 x `ashiftR` i =
