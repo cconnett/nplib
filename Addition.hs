@@ -8,9 +8,9 @@ import SatSolvers
 --addition :: NIntegral k => State NProgram (k, k, k)
 addition :: State NProgram (NInt, NInt, NInt)
 addition = do
-  a <- NInteger.fromInteger 47
-  --b <- NInteger.fromInteger 81
-  c <- NInteger.fromInteger 128
+  let a = NInteger.fromInteger 47
+  --let b = NInteger.fromInteger 81
+  let c = NInteger.fromInteger 128
   --a <- new 16
   b <- new 16
   --c <- new 16

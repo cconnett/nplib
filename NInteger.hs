@@ -66,13 +66,11 @@ class NVar k => NIntegral k where
       newVars <- takeSatVars width
       return $ fromVars newVars
 
-    fromInteger :: Integer -> Stateful k
-    fromInteger i = do
-      it <- new 16
-      let varStatuses = map (first (Bits.testBit i)) $ zip [width it - 1, width it - 2 .. 0] (toVars it)
-      forM_ varStatuses $ \(isSet, var) ->
-          assert $ (if isSet then makeTrue else makeFalse) var
-      return it
+    fromInteger :: Integer -> k
+    fromInteger i =
+      let width = 16 in
+      fromVars $ map (\bitNo -> if Bits.testBit i bitNo then true else false)
+                   [width - 1, width - 2 .. 0]
 
     width :: k -> Int
     width = length . toVars

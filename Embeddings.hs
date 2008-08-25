@@ -35,5 +35,5 @@ embedFormula (Formula clauses) = do
   return s
 
 negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
-                          
+
 embedFormulas = mapM embedFormula
