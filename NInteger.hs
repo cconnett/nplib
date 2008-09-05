@@ -67,9 +67,9 @@ class NVar k => NIntegral k where
       return $ fromVars newVars
 
     fromInteger :: Integer -> k
-    fromInteger i =
+    fromInteger a =
       let width = 16 in
-      fromVars $ map (\bitNo -> if Bits.testBit i bitNo then true else false)
+      fromVars $ map (\i -> if Bits.testBit a i then true else false)
                    [width - 1, width - 2 .. 0]
 
     width :: k -> Int
