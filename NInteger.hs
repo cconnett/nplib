@@ -178,5 +178,27 @@ x `ashiftR` i =
   let vars = toVars x
   in fromVars . (replicate i (head vars) ++) . dropLast i . toVars $ x
 
+nsum :: NIntegral k => [k] -> Stateful k
+nsum [] = return $ NInteger.fromInteger 0
+nsum [a] = return a
+nsum summands = do
+  sum <- new 16
+  frontSum <- nsum frontHalf
+  backSum <- nsum backHalf
+  add sum frontSum backSum >>= assert
+  return sum
+  where frontHalf = take half summands
+        backHalf = drop half summands
+        half = (length summands) `div` 2
+
+mul1bit :: NIntegral k => k -> Var -> Stateful k
+mul1bit a bit = do
+  outVars <- takeSatVars (width a)
+  forM_ (zip (toVars a) outVars) $ \(ai, oi) ->
+      assert $ Formula [Clause [Not ai, Not bit, Merely oi],
+                        Clause [Not oi, Merely ai],
+                        Clause [Not oi, Merely bit]]
+  return (fromVars outVars)
+
 --mul :: NIntegral k => k -> k -> k -> Stateful Formula
---mul =
+--mul c a b = do
