@@ -201,4 +201,8 @@ mul1bit a bit = do
   return (fromVars outVars)
 
 --mul :: NIntegral k => k -> k -> k -> Stateful Formula
---mul c a b = do
+mul :: NInt -> NInt -> NInt -> Stateful Formula
+mul c a b = do
+  partialProducts <- mapM (mul1bit a) (reverse $ toVars b)
+  result <- nsum $ map (uncurry shiftL) $ zip partialProducts [0..]
+  equal c result
