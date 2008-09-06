@@ -103,12 +103,9 @@ asSignedInteger bools =
           magnitude else
           Bits.complement magnitude + 1
 
-extendToCommonWidth a b c =
-    let commonWidth = maximum $ map width $ [a,b,c]
-    in
-      (extendTo commonWidth a,
-       extendTo commonWidth b,
-       extendTo commonWidth c)
+extendToCommonWidth as =
+    let commonWidth = maximum $ map width as
+    in map (extendTo commonWidth) as
 
 -- only works on same width integrals
 equal :: NIntegral k => k -> k -> Stateful Formula
@@ -117,7 +114,7 @@ equal a b = (liftM conjoin) $
 
 add :: NIntegral k => k -> k -> k -> Stateful Formula
 add c a b = do
-  let (a', b', c') = extendToCommonWidth a b c
+  let [a', b', c'] = extendToCommonWidth [a, b, c]
   let theWidth = width a' -- == width b' == width c'
   let numCarryBits = theWidth - 1
   carryBits <- takeSatVars numCarryBits
