@@ -36,4 +36,8 @@ embedFormula (Formula clauses) = do
 
 negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
 
+negateFormula formula = do
+  surrogate <- embedFormula formula
+  return $ Formula [Clause [Not surrogate]]
+
 embedFormulas = mapM embedFormula
