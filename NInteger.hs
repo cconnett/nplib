@@ -76,16 +76,18 @@ class NVar k => NIntegral k where
     width = length . toVars
 
     extendTo :: Int -> k -> k
-    extendTo bits k =
-        let vars = toVars k in
-        fromVars $ replicate (bits - length vars) (head vars) ++ vars
 
     testBit :: k -> Int -> Var
     k `testBit` i = reverse (toVars k) !! i
 
-instance NIntegral NInt
-instance NIntegral NUInt
-instance NIntegral Var
+instance NIntegral NInt where
+    extendTo bits k =
+        let vars = toVars k in
+        fromVars $ replicate (bits - length vars) (head vars) ++ vars
+instance NIntegral NUInt where
+    extendTo bits k =
+        let vars = toVars k in
+        fromVars $ replicate (bits - length vars) false ++ vars
 
 trueIndices bools = map fst $ filter snd $ zip [0..] (reverse bools)
 
