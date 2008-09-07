@@ -30,3 +30,8 @@ assert :: Formula -> State NProgram ()
 assert formula = do
   NProgram f unusedVars <- get
   put $ NProgram (conjoin [f, formula]) unusedVars
+
+{-
+deny :: Formula -> State NProgram ()
+deny formula = (>>= assert) . negateFormula
+-}
