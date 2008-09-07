@@ -110,9 +110,26 @@ extendToCommonWidth as =
     in map (extendTo commonWidth) as
 
 -- only works on same width integrals
-equal :: NIntegral k => k -> k -> Stateful Formula
-equal a b = (liftM conjoin) $
-            forM (zip (toVars a) (toVars b)) (return . uncurry makeEquivalent)
+equal, notEqual, leq, lt :: NIntegral k => k -> k -> Stateful Formula
+a `equal` b = return $
+    let [a', b'] = extendToCommonWidth [a, b] in
+    conjoin $ map (uncurry makeEquivalent) (zip (toVars a) (toVars b))
+
+a `leq` b = return $
+  let aBits = toVars a
+      bBits = toVars b
+  in
+    conjoin
+    [Formula [Clause [Not ak, Merely bk, Not aj],
+              Clause [Not ak, Merely bk, Merely bj]]
+     | (ak, bk) <- zip aBits bBits,
+       (aj, bj) <- zip (takeWhile (/=ak) aBits) (takeWhile (/=bk) bBits)]
+
+a `notEqual` b = equal a b >>= negateFormula
+a `lt` b = do
+  leq' <- a `leq` b
+  neq' <- a `notEqual` b
+  return $ conjoin [leq', neq']
 
 add :: NIntegral k => k -> k -> k -> Stateful Formula
 add c a b = do
