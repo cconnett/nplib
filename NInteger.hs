@@ -199,8 +199,7 @@ mul1bit a bit = do
                         Clause [Not oi, Merely bit]]
   return (fromVars outVars)
 
---mul :: NIntegral k => k -> k -> k -> Stateful Formula
-mul :: NInt -> NInt -> NInt -> Stateful Formula
+mul :: NIntegral k => k -> k -> k -> Stateful Formula
 mul c a b = do
   partialProducts <- mapM (mul1bit a) (reverse $ toVars b)
   result <- nsum $ map (uncurry shiftL) $ zip partialProducts [0..]
