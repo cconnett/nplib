@@ -22,7 +22,7 @@ multiplication = do
   return (a, b, c, c')
 
 main = do
-  let Just solutions = solveAllNProgram Minisat multiplication
+  let Just solutions = evalAllNProgram Minisat multiplication
   forM_ solutions $ \(a,b,c,c') -> do
          putStrLn $ "a: " ++ show (a::Int)
          putStrLn $ "b: " ++ show (b::Int)

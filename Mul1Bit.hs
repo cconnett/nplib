@@ -15,6 +15,6 @@ mul1 = do
   return (a', z')
 
 main = do
-  let (worked, (a',z')) = runNProgram Minisat mul1
+  let (worked, (a',z')) = evalNProgram Minisat mul1
   putStrLn $ "a': " ++ show (a'::Int)
   putStrLn $ "z': " ++ show (z'::Int)

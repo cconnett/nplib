@@ -4,17 +4,17 @@ import NProgram
 import NInteger
 import Control.Monad.State
 import SatSolvers
+import NVar
+import Solving
 
-equality :: State NProgram (NInt, NInt)
+equality :: State NProgram (NInt16, NInt16)
 equality = do
-  a <- NInteger.fromInteger 1238
-  b <- new 16
+  let a = NInteger.fromInteger 1238
+  b <- new
   equal a b >>= assert
   return (a, b)
 
 main = do
-  let (worked, (get, (a,b))) = runNProgram Minisat equality
-  print (toVars a)
-  print (toVars b)
-  putStrLn $ "a: " ++ show (get a::Int)
-  putStrLn $ "b: " ++ show (get b::Int)
+  let (worked, (a,b)) = evalNProgram Minisat equality
+  putStrLn $ "a: " ++ show (a::Int)
+  putStrLn $ "b: " ++ show (b::Int)

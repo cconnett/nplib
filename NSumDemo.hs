@@ -18,6 +18,6 @@ nsumDemo = do
   return (x, sum)
 
 main = do
-  let (worked, (x, sum)) = runNProgram Minisat nsumDemo
+  let (worked, (x, sum)) = evalNProgram Minisat nsumDemo
   putStrLn $ "x: " ++ show (x::Int)
   putStrLn $ "sum: " ++ show (sum::Int)

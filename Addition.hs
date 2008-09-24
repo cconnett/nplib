@@ -20,7 +20,7 @@ addition = do
   return (a, b, c)
 
 main = do
-  let (worked, (a,b,c)) = runNProgram RSat addition
+  let (worked, (a,b,c)) = evalNProgram RSat addition
   putStrLn $ "a: " ++ show (a::Int)
   putStrLn $ "b: " ++ show (b::Int)
   putStrLn $ "c: " ++ show (c::Int)
