@@ -4,6 +4,7 @@ module Embeddings where
 import Data.List
 import SAT
 import NProgram
+import Control.Monad.State
 
 class Cond c where
     condify :: c -> Stateful Var
@@ -39,5 +40,8 @@ negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
 negateFormula formula = do
   surrogate <- embedFormula formula
   return $ Formula [Clause [Not surrogate]]
+
+deny :: Formula -> State NProgram ()
+deny = (>>= assert) . negateFormula
 
 embedFormulas = mapM embedFormula
