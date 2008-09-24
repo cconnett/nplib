@@ -28,6 +28,8 @@ module NInteger where
 import NProgram
 import SAT
 import Embeddings
+import NVar
+import qualified NVar
 
 import Prelude hiding (negate)
 import Control.Monad.State
@@ -35,66 +37,63 @@ import Control.Arrow
 import Data.Bits ((.|.))
 import qualified Data.Bits as Bits
 import Data.Word
+import Data.Int
 
 import Utilities
+import Debug.Trace
 
-newtype NInt = NInt [Var]
-newtype NUInt = NUInt [Var]
-
-instance NVar NInt where
-    toVars (NInt vars) = vars
-    fromVars = NInt
-instance Interpret NInt Int where
-    interpret v = fromIntegral . asSignedInteger
-               
-instance NVar NUInt where
-    toVars (NUInt vars) = vars
-    fromVars = NUInt
-instance Interpret NUInt Int where
-    interpret v = fromIntegral . asUnsignedInteger
+newtype NInt8  = NInt8  [Var] deriving (Show, Read)
+newtype NInt16 = NInt16 [Var] deriving (Show, Read)
+newtype NInt32 = NInt32 [Var] deriving (Show, Read)
+newtype NInt64 = NInt64 [Var] deriving (Show, Read)
+newtype NInteger = NInteger [Var] deriving (Show, Read)
     
-instance NVar Var where
-    toVars var = [var]
-    fromVars vars = head vars
-instance Interpret Var Bool where
-    interpret v = asBool
+newtype NWord8  = NWord8  [Var] deriving (Show, Read)
+newtype NWord16 = NWord16 [Var] deriving (Show, Read)
+newtype NWord32 = NWord32 [Var] deriving (Show, Read)
+newtype NWord64 = NWord64 [Var] deriving (Show, Read)
 
+-- NVar and Interpret instances for signed types
+instance NVar NInt8 where
+    toVars (NInt8 vars) = vars
+    fromVars = NInt8 . (makeCorrectLength arithmeticStyle 8)
+    new = fixedWidthNew 8
+instance (Integral i) => Interpret NInt8 i where
+    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
-class NVar k => NIntegral k where
-    new :: Int -> Stateful k
-    new width = do
-      newVars <- takeSatVars width
-      return $ fromVars newVars
+instance NVar NInt16 where
+    toVars (NInt16 vars) = vars
+    fromVars = NInt16 . (makeCorrectLength arithmeticStyle 16)
+    new = fixedWidthNew 16
+instance (Integral i) => Interpret NInt16 i where
+    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
-    fromInteger :: Integer -> k
-    fromInteger a =
-      let width = 16 in
-      fromVars $ map (\i -> if Bits.testBit a i then true else false)
-                   [width - 1, width - 2 .. 0]
+instance NVar NInt32 where
+    toVars (NInt32 vars) = vars
+    fromVars = NInt32 . (makeCorrectLength arithmeticStyle 32)
+    new = fixedWidthNew 32
+instance (Integral i) => Interpret NInt32 i where
+    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
-    width :: k -> Int
-    width = length . toVars
+instance NVar NInt64 where
+    toVars (NInt64 vars) = vars
+    fromVars = NInt64 . (makeCorrectLength arithmeticStyle 64)
+    new = fixedWidthNew 64
+instance (Integral i) => Interpret NInt64 i where
+    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
-    extendTo :: Int -> k -> k
+instance NVar NInteger where
+    toVars (NInteger vars) = vars
+    fromVars = NInteger
+    new = fixedWidthNew 1
+instance (Integral i) => Interpret NInteger i where
+    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
-    testBit :: k -> Int -> Var
-    k `testBit` i = reverse (toVars k) !! i
-
-instance NIntegral NInt where
-    extendTo bits k =
-        let vars = toVars k in
-        fromVars $ replicate (bits - length vars) (head vars) ++ vars
-instance NIntegral NUInt where
-    extendTo bits k =
-        let vars = toVars k in
-        fromVars $ replicate (bits - length vars) false ++ vars
-
-trueIndices bools = map fst $ filter snd $ zip [0..] (reverse bools)
-
-asBool = or
-
-asUnsignedInteger :: [Bool] -> Integer
-asUnsignedInteger bools = foldl (.|.) 0 (map Bits.bit $ trueIndices bools)
+fixedWidthNew width = do
+  vars <- takeSatVars width
+  return $ fromVars vars
+newNInteger :: Int -> Stateful NInteger
+newNInteger  = fixedWidthNew
 
 asSignedInteger :: [Bool] -> Integer
 asSignedInteger bools =
@@ -105,15 +104,127 @@ asSignedInteger bools =
           magnitude else
           Bits.complement magnitude + 1
 
+asUnsignedInteger :: [Bool] -> Integer
+asUnsignedInteger bools = foldl (.|.) 0 (map Bits.bit $ trueIndices (myTrace (concatMap (\b -> if b then "1" else "0") bools) bools))
+trueIndices bools = map fst $ filter snd $ zip [0..] (reverse bools)
+
+-- NVar and Interpret instances for unsigned types
+instance NVar NWord8 where
+    toVars (NWord8 vars) = (makeCorrectLength logicalStyle 9 vars)
+    fromVars = NWord8 . (makeCorrectLength logicalStyle 8)
+    new = fixedWidthNew 8
+instance (Integral i) => Interpret NWord8 i where
+    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+
+instance NVar NWord16 where
+    toVars (NWord16 vars) = (makeCorrectLength logicalStyle 17 vars)
+    fromVars = NWord16 . (makeCorrectLength logicalStyle 16)
+    new = fixedWidthNew 16
+instance (Integral i) => Interpret NWord16 i where
+    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+
+instance NVar NWord32 where
+    toVars (NWord32 vars) = (makeCorrectLength logicalStyle 33 vars)
+    fromVars = NWord32 . (makeCorrectLength logicalStyle 32)
+    new = fixedWidthNew 32
+instance (Integral i) => Interpret NWord32 i where
+    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+
+instance NVar NWord64 where
+    toVars (NWord64 vars) = (makeCorrectLength logicalStyle 65 vars)
+    fromVars = NWord64 . (makeCorrectLength logicalStyle 64)
+    new = fixedWidthNew 64
+instance (Integral i) => Interpret NWord64 i where
+    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+
+-- The NIntegral class represents non-deterministic Integral types
+class (NVar k) => NIntegral k where
+    fromInteger :: Integer -> k
+    extendTo :: Int -> k -> [Var]
+    fromNIntegral :: (NIntegral j) => j -> k
+    fromNIntegral = fromVars . toVars
+
+
+m, m' :: (Integral a) => a -> Int
+m a
+    | a == 0 = 0
+    | a > 0 = m' a
+    | a < 0 = m' (abs a) - 1
+m' = (+1) . floor . (logBase 2) . fromIntegral
+
+width :: (NVar v) => v -> Int
+width = length . toVars
+
+-- Produces an NIntegral representing the value in the Integer a,
+-- using the fewest bits possible for a signed represenation.  A
+-- positive value will have a 0 in the top-most (sign) bit.
+minWidthFromInteger a =
+    let width = m a + 1 in
+    map (\i -> if Bits.testBit a i then true else false)
+            [width - 1, width - 2 .. 0]
+
+fixedWidthFromInteger :: forall k. (NIntegral k) => Int -> Integer -> k
+fixedWidthFromInteger width a =
+    fromVars $ minWidthFromInteger a
+
+extendToStyle style numBits vars =
+    replicate (numBits - length vars) (style (head vars)) ++ vars
+logicalStyle = const false
+arithmeticStyle = id
+
+trimTo numBits vars = drop (length vars - numBits) vars
+
+makeCorrectLength style numBits vars =
+    trimTo numBits $ extendToStyle style numBits vars
+
+instance NIntegral NInt8 where
+    fromInteger = fixedWidthFromInteger 8
+    extendTo numBits = (extendToStyle arithmeticStyle numBits) . toVars
+instance NIntegral NInt16 where
+    fromInteger = fixedWidthFromInteger 16
+    extendTo numBits = (extendToStyle arithmeticStyle numBits) . toVars
+instance NIntegral NInt32 where
+    fromInteger = fixedWidthFromInteger 32
+    extendTo numBits = (extendToStyle arithmeticStyle numBits) . toVars
+instance NIntegral NInt64 where
+    fromInteger = fixedWidthFromInteger 64
+    extendTo numBits = (extendToStyle arithmeticStyle numBits) . toVars
+instance NIntegral NInteger where
+    fromInteger = NInteger . minWidthFromInteger
+    extendTo numBits = (extendToStyle arithmeticStyle numBits) . toVars
+
+instance NIntegral Var where
+    fromInteger = fixedWidthFromInteger 1
+    extendTo numBits = (extendToStyle logicalStyle numBits) . toVars
+instance NIntegral NWord8 where
+    fromInteger = fixedWidthFromInteger 8
+    extendTo numBits = (extendToStyle logicalStyle numBits) . toVars
+instance NIntegral NWord16 where
+    fromInteger = fixedWidthFromInteger 16
+    extendTo numBits = (extendToStyle logicalStyle numBits) . toVars
+instance NIntegral NWord32 where
+    fromInteger = fixedWidthFromInteger 32
+    extendTo numBits = (extendToStyle logicalStyle numBits) . toVars
+instance NIntegral NWord64 where
+    fromInteger = fixedWidthFromInteger 64
+    extendTo numBits = (extendToStyle logicalStyle numBits) . toVars
+
+{-
+testBit :: k -> Int -> Var
+k `testBit` i = reverse (toVars k) !! i
+-}
+
+extendToCommonWidth :: (NIntegral k) => [k] -> [[Var]]
 extendToCommonWidth as =
     let commonWidth = maximum $ map width as
     in map (extendTo commonWidth) as
 
--- only works on same width integrals
-equal, notEqual, leq, lt :: NIntegral k => k -> k -> Stateful Formula
+equal, notEqual, leq, lt :: (NIntegral j, NIntegral k) => j -> k -> Stateful Formula
 a `equal` b = return $
-    let [a', b'] = extendToCommonWidth [a, b] in
-    conjoin $ map (uncurry makeEquivalent) (zip (toVars a) (toVars b))
+    let a' = extendTo (width b) a
+        b' = extendTo (width a) b
+    in
+    conjoin $ map (uncurry makeEquivalent) (zip a' b')
 
 a `leq` b = return $
   let aBits = toVars a
@@ -134,12 +245,12 @@ a `lt` b = do
 add :: NIntegral k => k -> k -> k -> Stateful Formula
 add c a b = do
   let [a', b', c'] = extendToCommonWidth [a, b, c]
-  let theWidth = width a' -- == width b' == width c'
+  let theWidth = length a' -- == width b' == width c'
   let numCarryBits = theWidth - 1
   carryBits <- takeSatVars numCarryBits
-  let aBit k = Merely $ (toVars a') !! (theWidth - k - 1)
-  let bBit k = Merely $ (toVars b') !! (theWidth - k - 1)
-  let cBit k = Merely $ (toVars c') !! (theWidth - k - 1)
+  let aBit k = Merely $ a' !! (theWidth - k - 1)
+  let bBit k = Merely $ b' !! (theWidth - k - 1)
+  let cBit k = Merely $ c' !! (theWidth - k - 1)
   let carryBit k = Merely $ carryBits !! (numCarryBits - k)
   let set0thResult = Formula $ map Clause $
        [[      cBit 0,       aBit 0, neg $ bBit 0],
@@ -174,38 +285,38 @@ add c a b = do
 -- c == a - b <=> a == b + c
 sub c a b = add a b c
 -- Take the two's complement of x
-negate :: NIntegral k => k -> Stateful k
+negate :: forall k. (NIntegral k) => k -> Stateful k
 negate x = do
-  onesComplementX <- new (width x)
+  (onesComplementX::k) <- new
   forM_ (zip (toVars x) (toVars onesComplementX)) $ \(v, ocv) ->
       assert $ makeOpposed v ocv
-  twosComplementX <- new (width x)
+  (twosComplementX::k) <- new
   let one = fromVars [true]
   add twosComplementX onesComplementX one >>= assert
   return twosComplementX
 
 -- Logical shift left and right
 shiftL, shiftR, ashiftR :: NIntegral k => k -> Int -> k
-x `shiftL` i = fromVars . drop i . (++ replicate i false) . toVars $ x
-x `shiftR` i = fromVars . (replicate i false ++) . dropLast i . toVars $ x
-dropLast i = reverse . drop i . reverse
+x `shiftL` i = fromVars . (++ replicate i false) . toVars $ x
+x `shiftR` i = fromVars . (replicate i false ++) . toVars $ x
 -- Arithmetic shift right (sign bit extension)
 x `ashiftR` i =
   let vars = toVars x
-  in fromVars . (replicate i (head vars) ++) . dropLast i . toVars $ x
+  in fromVars . (replicate i (head vars) ++) . toVars $ x
 
-nsum :: NIntegral k => [k] -> Stateful k
+nsum :: (NIntegral j, NIntegral k) => [k] -> Stateful j
 nsum [] = return $ NInteger.fromInteger 0
-nsum [a] = return a
+nsum [a] = return $ fromNIntegral a
 nsum summands = do
-  sum <- new 16
+  sum :: NInteger <- fixedWidthNew bitsNeeded
   frontSum <- nsum frontHalf
   backSum <- nsum backHalf
-  add sum frontSum backSum >>= assert
-  return sum
+  add (trace (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf)) sum) frontSum backSum >>= assert
+  return $ fromNIntegral sum
   where frontHalf = take half summands
         backHalf = drop half summands
         half = (length summands) `div` 2
+        bitsNeeded = m $ sum $ map (\summand -> Bits.bit (width summand - 1) - 1 :: Integer) summands
 
 mul1bit :: NIntegral k => k -> Var -> Stateful k
 mul1bit a bit = do
@@ -216,8 +327,8 @@ mul1bit a bit = do
                         Clause [Not oi, Merely bit]]
   return (fromVars outVars)
 
-mul :: NIntegral k => k -> k -> k -> Stateful Formula
-mul c a b = do
-  partialProducts <- mapM (mul1bit a) (reverse $ toVars b)
+mul :: (NIntegral j, NIntegral k) => k -> k -> Stateful j
+mul a b = do
+  partialProducts :: [NInteger] <- liftM (map fromNIntegral) $ mapM (mul1bit a) (reverse $ toVars b)
   result <- nsum $ map (uncurry shiftL) $ zip partialProducts [0..]
-  equal c result
+  return result

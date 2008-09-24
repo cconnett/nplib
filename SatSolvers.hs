@@ -163,7 +163,8 @@ minisatRealRun dimacsName stdoutName solutionName = do
 -- Parse the output of minisat into answers about the formula.
 minisatParse :: String -> String -> (Maybe Bool, IM.IntMap Bool)
 minisatParse answer solution =
-    let assignmentLine = myTrace solution $ (lines solution) !! 1
+    let --assignmentLine = myTrace solution $ (lines solution) !! 1
+        assignmentLine = (lines solution) !! 1
         assignmentStrings = words assignmentLine
         assignments = map read (init assignmentStrings)
         (trues, falses) = second (map abs) $ partition (>0) assignments

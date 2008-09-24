@@ -1,22 +1,23 @@
 module Main where
 
 import NProgram
+import NVar
 import NInteger
 import Control.Monad.State
 import SatSolvers
+import Solving
 
-nsumDemo :: State NProgram (NInt, NInt, NInt)
+nsumDemo :: State NProgram (NWord8, NWord8)
 nsumDemo = do
-  x <- new 16
-  y <- new 16
+  x <- new
   sum <- nsum [NInteger.fromInteger 21,
               NInteger.fromInteger 15,
               NInteger.fromInteger 97,
-              x, y]
-  return (x, y, sum)
+              x]
+  equal sum (NInteger.fromInteger 200 `asTypeOf` sum) >>= assert
+  return (x, sum)
 
 main = do
-  let (worked, (get, (x, y, sum))) = runNProgram Minisat nsumDemo
-  putStrLn $ "x: " ++ show (get x::Int)
-  putStrLn $ "y: " ++ show (get y::Int)
-  putStrLn $ "sum: " ++ show (get sum::Int)
+  let (worked, (x, sum)) = runNProgram Minisat nsumDemo
+  putStrLn $ "x: " ++ show (x::Int)
+  putStrLn $ "sum: " ++ show (sum::Int)
