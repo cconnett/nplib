@@ -1,5 +1,6 @@
 {-# OPTIONS -fno-monomorphism-restriction #-}
-module Solving where
+module Solving (evalAllNProgram, evalNProgram, execNProgram)
+    where
 
 import SAT
 import SatSolvers
