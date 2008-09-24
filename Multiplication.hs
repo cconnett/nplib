@@ -22,8 +22,10 @@ multiplication = do
   return (a, b, c, c')
 
 main = do
-  let (worked, (a,b,c,c')) = runNProgram Minisat multiplication
-  putStrLn $ "a: " ++ show (a::Int)
-  putStrLn $ "b: " ++ show (b::Int)
-  putStrLn $ "c: " ++ show (c::Int)
-  putStrLn $ "c': " ++ show (c'::Integer)
+  let Just solutions = solveAllNProgram Minisat multiplication
+  forM_ solutions $ \(a,b,c,c') -> do
+         putStrLn $ "a: " ++ show (a::Int)
+         putStrLn $ "b: " ++ show (b::Int)
+         putStrLn $ "c: " ++ show (c::Int)
+         putStrLn $ "c': " ++ show (c'::Integer)
+         putStrLn ""
