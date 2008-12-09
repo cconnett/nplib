@@ -13,7 +13,7 @@ GHC=ghc
 all: Solve
 
 clean:
-	rm -rf *.o BruteForce GenElections Solve Summarize Tests *.tix .hpc
+	rm -rf *.o *.hi BruteForce GenElections Solve Summarize Tests *.tix .hpc
 
 BruteForce: BruteForce.hs Elections.hs Manipulation.hs Voting.hs
 	${GHC} ${FLAGS} --make BruteForce.hs -o BruteForce
