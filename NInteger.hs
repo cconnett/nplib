@@ -40,7 +40,6 @@ import Data.Word
 import Data.Int
 
 import Utilities
-import Debug.Trace
 
 newtype NInt8  = NInt8  [Var] deriving (Show, Read)
 newtype NInt16 = NInt16 [Var] deriving (Show, Read)
@@ -157,12 +156,13 @@ width = length . toVars
 -- positive value will have a 0 in the top-most (sign) bit.
 minWidthFromInteger a =
     let width = m a + 1 in
+    fixedWidthFromInteger width a
+
+fixedWidthFromInteger :: forall k. (NIntegral k) => Int -> Integer -> k
+fixedWidthFromInteger width a = fromVars $
     map (\i -> if Bits.testBit a i then true else false)
             [width - 1, width - 2 .. 0]
 
-fixedWidthFromInteger :: forall k. (NIntegral k) => Int -> Integer -> k
-fixedWidthFromInteger width a =
-    fromVars $ minWidthFromInteger a
 
 extendToStyle style numBits vars =
     replicate (numBits - length vars) (style (head vars)) ++ vars
@@ -187,7 +187,7 @@ instance NIntegral NInt64 where
     fromInteger = fixedWidthFromInteger 64
     extendTo numBits = (extendToStyle arithmeticStyle numBits) . toVars
 instance NIntegral NInteger where
-    fromInteger = NInteger . minWidthFromInteger
+    fromInteger = minWidthFromInteger
     extendTo numBits = (extendToStyle arithmeticStyle numBits) . toVars
 
 instance NIntegral Var where
@@ -216,22 +216,23 @@ extendToCommonWidth as =
     let commonWidth = maximum $ map width as
     in map (extendTo commonWidth) as
 
-equal, notEqual, leq, lt :: (NIntegral j, NIntegral k) => j -> k -> Stateful Formula
-a `equal` b = return $
-    let a' = extendTo (width b) a
-        b' = extendTo (width a) b
-    in
-    conjoin $ map (uncurry makeEquivalent) (zip a' b')
+equal, notEqual, leq, lt :: (NIntegral k) => k -> k -> Stateful Formula
+a `equal` b =
+    let [a', b'] = extendToCommonWidth [a, b] in
+    return $ conjoin $ map (uncurry makeEquivalent) (zip a' b')
 
-a `leq` b = return $
-  let aBits = toVars a
-      bBits = toVars b
-  in
-    conjoin
-    [Formula [Clause [Not ak, Merely bk, Not aj],
-              Clause [Not ak, Merely bk, Merely bj]]
-     | (ak, bk) <- zip aBits bBits,
-       (aj, bj) <- zip (takeWhile (/=ak) aBits) (takeWhile (/=bk) bBits)]
+a `leq` b = do
+  let aBits = tail $ toVars a
+  let bBits = tail $ toVars b
+  let aSign = head $ toVars a
+  let bSign = head $ toVars b
+  correctingTerms <- embedFormulas [(Formula [Clause [Not aj], Clause [Merely bj]])
+                                       | (aj, bj) <- zip aBits bBits]
+  return $ --trace (show (aSign, aBits, bSign, bBits)) $
+   conjoin $ Formula [Clause [Merely aSign, Not bSign]] :
+     [Formula [Clause $ [Merely aSign, Merely bSign, Not ak, Merely bk] ++ map Merely (take k' correctingTerms),
+               Clause $ [Not aSign, Not bSign, Not ak, Merely bk] ++ map Merely (take k' correctingTerms)]
+     | (k', ak, bk) <- zip3 [0..] aBits bBits]
 
 a `notEqual` b = equal a b >>= negateFormula
 a `lt` b = do
@@ -239,10 +240,12 @@ a `lt` b = do
   neq' <- a `notEqual` b
   return $ conjoin [leq', neq']
 
-add :: NIntegral k => k -> k -> k -> Stateful Formula
-add c a b = do
-  let [a', b', c'] = extendToCommonWidth [a, b, c]
+add :: NIntegral k => k -> k -> Stateful k
+add a b = do
+  let [a', b'] = extendToCommonWidth [a, b]
   let theWidth = length a' -- == width b' == width c'
+  c <- fixedWidthNew theWidth
+  let c' = toVars c
   let numCarryBits = theWidth - 1
   carryBits <- takeSatVars numCarryBits
   let aBit k = Merely $ a' !! (theWidth - k - 1)
@@ -274,23 +277,25 @@ add c a b = do
         [neg $ carryBit k,       aBit (k-1),       bBit (k-1)                      ],
         [neg $ carryBit k,       aBit (k-1),                         carryBit (k-1)],
         [neg $ carryBit k,                         bBit (k-1),       carryBit (k-1)]]
-  return $ conjoin $
+  assert $ conjoin $
              [set0thResult, set1stCarry,
               conjoin $ map setKthResult [1 .. theWidth - 1],
               conjoin $ map setKthCarry [2 .. theWidth - 1]]
+  return c
 
 -- c == a - b <=> a == b + c
-sub c a b = add a b c
+sub a b = do
+  c <- new
+  a' <- add b c
+  equal a a' >>= assert
+  return c
 -- Take the two's complement of x
 negate :: forall k. (NIntegral k) => k -> Stateful k
 negate x = do
   (onesComplementX::k) <- new
   forM_ (zip (toVars x) (toVars onesComplementX)) $ \(v, ocv) ->
       assert $ makeOpposed v ocv
-  (twosComplementX::k) <- new
-  let one = fromVars [true]
-  add twosComplementX onesComplementX one >>= assert
-  return twosComplementX
+  add onesComplementX (NInteger.fromInteger 1)
 
 -- Logical shift left and right
 shiftL, shiftR, ashiftR :: NIntegral k => k -> Int -> k
@@ -301,15 +306,15 @@ x `ashiftR` i =
   let vars = toVars x
   in fromVars . (replicate i (head vars) ++) . toVars $ x
 
-nsum :: (NIntegral j, NIntegral k) => [k] -> Stateful j
+nsum :: (NIntegral k) => [k] -> Stateful k
 nsum [] = return $ NInteger.fromInteger 0
-nsum [a] = return $ fromNIntegral a
+nsum [a] = return a
 nsum summands = do
-  sum :: NInteger <- fixedWidthNew bitsNeeded
+  --sum :: NInteger <- fixedWidthNew bitsNeeded
   frontSum <- nsum frontHalf
   backSum <- nsum backHalf
-  add (trace (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf)) sum) frontSum backSum >>= assert
-  return $ fromNIntegral sum
+  sum <- add frontSum backSum
+  return $ (myTrace (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf)) sum)
   where frontHalf = take half summands
         backHalf = drop half summands
         half = (length summands) `div` 2
@@ -324,8 +329,8 @@ mul1bit a bit = do
                         Clause [Not oi, Merely bit]]
   return (fromVars outVars)
 
-mul :: (NIntegral j, NIntegral k) => k -> k -> Stateful j
+mul :: (NIntegral k) => k -> k -> Stateful k
 mul a b = do
   partialProducts :: [NInteger] <- liftM (map fromNIntegral) $ mapM (mul1bit a) (reverse $ toVars b)
   result <- nsum $ map (uncurry shiftL) $ zip partialProducts [0..]
-  return result
+  return $ fromNIntegral result
