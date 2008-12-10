@@ -99,10 +99,7 @@ asSignedInteger :: [Bool] -> Integer
 asSignedInteger bools =
     let signBit = head (myTrace (concatMap (\b -> if b then "1" else "0") bools) bools)
         magnitude = asUnsignedInteger (tail bools)
-    in
-      if not signBit then
-          magnitude else
-          Bits.complement magnitude + 1
+    in magnitude - (if signBit then Bits.bit (length bools - 1) else 0)
 
 asUnsignedInteger :: [Bool] -> Integer
 asUnsignedInteger bools = foldl (.|.) 0 (map Bits.bit $ trueIndices (myTrace (concatMap (\b -> if b then "1" else "0") bools) bools))
