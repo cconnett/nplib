@@ -1,6 +1,6 @@
 BASEFLAGS=-fglasgow-exts -fno-monomorphism-restriction -funbox-strict-fields -dcore-lint
 #PROFILEFLAGS=-prof -auto-all
-#COVERAGEFLAGS=-fhpc
+COVERAGEFLAGS=-fhpc
 THREADED=-threaded
 OPTFLAGS=-O -optc-O3 -optc-march=k8
 
@@ -12,16 +12,19 @@ GHC=ghc
 #all: BruteForce GenElections Summarize Solve Tests
 all: Solve
 
-test: TestNInteger Tests
-	./TestNInteger
-	./Tests
-	hpc sum --union --output=all.tix TestNInteger.tix Tests.tix
-	hpc report all.tix
-	hpc markup all.tix
+test: TestAll
+	./TestAll
+	hpc report TestAll
+	hpc markup TestAll > /dev/null
+
+TestAll.hs: TestNPLib.hs TestNInteger.hs
+	python constructTestMain.py $^ > TestAll.hs
+TestAll: TestAll.hs *.hs
+	${GHC} ${FLAGS} --make $< -o $@
 
 clean:
-	rm -rf *.o *.hi *.tix .hpc *.html \
-		BruteForce GenElections Solve Summarize Tests TestNInteger
+	rm -rf *.o *.hi *.tix .hpc *.html TestAll.hs TestAll \
+		BruteForce GenElections Solve Summarize TestNInteger
 
 # Primary thesis tools
 BruteForce: BruteForce.hs Elections.hs Manipulation.hs Voting.hs
@@ -36,8 +39,3 @@ Summarize: Summarize.hs Elections.hs Voting.hs
 Solve: Solve.hs *.hs
 	${GHC} ${FLAGS} --make $< -o $@
 
-# Testing programs
-Tests: Tests.hs *.hs
-	${GHC} ${FLAGS} --make $< -o $@
-TestNInteger: TestNInteger.hs *.hs
-	${GHC} ${FLAGS} --make $< -o $@

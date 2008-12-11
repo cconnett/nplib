@@ -4,6 +4,7 @@ module Utilities where
 
 import Maybe
 import Data.List
+import Data.Bits
 import Control.Monad
 import Control.Parallel
 import qualified Data.Set as S
