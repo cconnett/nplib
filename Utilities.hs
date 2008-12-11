@@ -14,7 +14,7 @@ import Foreign (unsafePerformIO)
 
 debug = True
 myTrace = if debug then trace else flip const
-traceIt s = myTrace ("\nTRACEIT:" ++ show s) s
+traceIt s = myTrace ("TRACEIT:" ++ show s) s
 
 -- nub with an upper limit
 nub' :: Eq a => Int -> [a] -> [a]
