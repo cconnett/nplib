@@ -12,9 +12,18 @@ GHC=ghc
 #all: BruteForce GenElections Summarize Solve Tests
 all: Solve
 
-clean:
-	rm -rf *.o *.hi BruteForce GenElections Solve Summarize Tests *.tix .hpc
+test: TestNInteger Tests
+	./TestNInteger
+	./Tests
+	hpc sum --union --output=all.tix TestNInteger.tix Tests.tix
+	hpc report all.tix
+	hpc markup all.tix
 
+clean:
+	rm -rf *.o *.hi *.tix .hpc *.html \
+		BruteForce GenElections Solve Summarize Tests TestNInteger
+
+# Primary thesis tools
 BruteForce: BruteForce.hs Elections.hs Manipulation.hs Voting.hs
 	${GHC} ${FLAGS} --make BruteForce.hs -o BruteForce
 
@@ -24,8 +33,11 @@ GenElections: GenElections.hs Elections.hs Voting.hs RunGenIO.hs
 Summarize: Summarize.hs Elections.hs Voting.hs
 	${GHC} ${FLAGS} --make Summarize.hs -o Summarize
 
-Solve: *.hs
-	${GHC} ${FLAGS} --make Solve.hs -o Solve
+Solve: Solve.hs *.hs
+	${GHC} ${FLAGS} --make $< -o $@
 
-Tests: *.hs
-	${GHC} ${FLAGS} --make Tests.hs -o Tests
+# Testing programs
+Tests: Tests.hs *.hs
+	${GHC} ${FLAGS} --make $< -o $@
+TestNInteger: TestNInteger.hs *.hs
+	${GHC} ${FLAGS} --make $< -o $@
