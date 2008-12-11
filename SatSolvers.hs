@@ -147,7 +147,9 @@ minisatRunAll (numVars, formula) = do
              (Just True, _) : _ -> Just $ map snd $ takeWhile ((==Just True) . fst) solutions
 
 minisatRunAll' (numVars, formula) = do
-  (aResult, aSolution) <- minisatRun1 (toDIMACS (numVars, formula))
+  (aResult, aSolution) <- myTrace (show numVars ++ " variables, " ++
+                                  show (length $ fromFormula formula) ++ " clauses.\n") $
+                          minisatRun1 (toDIMACS (numVars, formula))
   let firstElement = minisatParse aResult aSolution
   let restElements = minisatRunAll' (numVars, conjoin [formula, minisatInvalidateSolution aSolution])
   return $ firstElement : (unsafePerformIO restElements)
