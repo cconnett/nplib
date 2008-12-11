@@ -4,12 +4,11 @@ BASEFLAGS=-fglasgow-exts -fno-monomorphism-restriction -funbox-strict-fields -dc
 THREADED=-threaded
 OPTFLAGS=-O -optc-O3 -optc-march=k8
 
-FLAGS=${BASEFLAGS} ${THREADED} ${PROFILEFLAGS} ${COVERAGEFLAGS} ${OPTFLAGS}
+FLAGS=${BASEFLAGS} ${THREADED} ${PROFILEFLAGS} ${COVERAGEFLAGS} ${OPTFLAGS} -i..
 
 GHC=/tmp/ghc-6.8.2/bin/ghc
 GHC=ghc
 
-#all: BruteForce GenElections Summarize Solve Tests
 all: Addition Equality NSumDemo Mul1Bit Multiplication
 
 clean:
