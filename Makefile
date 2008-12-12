@@ -13,6 +13,7 @@ GHC=ghc
 all: Solve
 
 test: TestAll
+	rm -f TestAll.tix
 	./TestAll
 	hpc report TestAll
 	hpc markup TestAll > /dev/null

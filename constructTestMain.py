@@ -1,8 +1,8 @@
 import sys
 import re
 
-modulerx = re.compile(r'module (\w+)')
-proprx = re.compile(r'^(prop_\w+)')
+modulerx = re.compile(r'module (\S+)')
+proprx = re.compile(r'^(prop_\S+)')
 
 module = None
 imports = []
