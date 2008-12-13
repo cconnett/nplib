@@ -191,10 +191,9 @@ minisatRealRun dimacsName stdoutName solutionName = do
   status <- system cmd
   case status of
     ExitSuccess -> return ()
-    ExitFailure 10 -> return ()
-    ExitFailure 20 -> return ()
-    ExitFailure 158 -> return ()
-    _ -> error "Minisat failure" --minisatRealRun dimacsName stdoutName solutionName
+    ExitFailure n -> if n `elem` [2,10,20,158] then
+                        return () else
+                        error ("Minisat failure: " ++ show status)
          
 -- Parse the output of minisat into answers about the formula.
 minisatParse :: String -> String -> (Maybe Bool, IM.IntMap Bool)
