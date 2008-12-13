@@ -68,17 +68,6 @@ instance Show Proposition where
 show2 (Merely v) = show v
 show2 (Not v) = '-':(show v)
 
--- Letter is a nice restricted version of Char that is convenient to
--- use in Arbitrary Constraints.
-newtype Letter = Letter Char
---    deriving (Show, Read, Eq, Ord)
-    deriving (Eq, Ord)
-instance Show Letter where showsPrec _ (Letter c) s = c:s
-instance Read Letter where readsPrec _ s = let [(c,s')] = (lex s) in [(Letter (head c), s')]
-instance Arbitrary Letter where
-    arbitrary = sized $ (\n -> elements (map Letter (take (min (n`div`3 + 2) 9) ['A'..])))
-    coarbitrary (Letter v) = variant (ord v)
-
 instance Arbitrary Formula where
     arbitrary = sized (\n -> (liftM Formula) (resize (round $ sqrt $ fromIntegral n) arbitrary))
     coarbitrary (Formula f) = coarbitrary f
@@ -91,8 +80,5 @@ instance Arbitrary Proposition where
       ctor <- elements [Merely, Not]
       var <- arbitrary
       return $ ctor var
-    coarbitrary (Merely p) = coarbitrary p
-    coarbitrary (Not p) = coarbitrary p
-
--- cleanFormula removes null clauses from a formula
-cleanFormula (Formula formula) = Formula $ filter (not . null . fromClause) formula
+    coarbitrary (Merely p) = variant 1 . coarbitrary p
+    coarbitrary (Not p) = variant 2 . coarbitrary p

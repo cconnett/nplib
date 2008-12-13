@@ -41,3 +41,9 @@ prop_deny a b =
                                       eq <- a'`equal`b'
                                       deny eq)
               )
+
+-- cleanFormula removes null clauses from a formula.  Minisat takes
+-- null clauses to be unsatisfiable, and ZChaff and RSat ignore them.
+-- So clean any formulas used in properties checking for agreement
+-- between the sat solvers.
+cleanFormula (Formula formula) = Formula $ filter (not . null . fromClause) formula
