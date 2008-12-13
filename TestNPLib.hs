@@ -41,6 +41,9 @@ prop_deny a b =
                                       eq <- a'`equal`b'
                                       deny eq)
               )
+prop_assertConjoinShow formula =
+    let (NProgram baseFormula _) = emptyNProgram in
+    (show $ execState (assert formula) emptyNProgram) == (show $ conjoin [baseFormula,formula])
 
 -- cleanFormula removes null clauses from a formula.  Minisat takes
 -- null clauses to be unsatisfiable, and ZChaff and RSat ignore them.
