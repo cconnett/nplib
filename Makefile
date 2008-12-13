@@ -19,7 +19,7 @@ test: TestAll
 	hpc markup TestAll > /dev/null
 
 TestAll.hs: TestNPLib.hs TestNInteger.hs
-	python constructTestMain.py $^ > TestAll.hs
+	python constructTestMain.py TestAll.hs $^
 TestAll: TestAll.hs *.hs
 	${GHC} ${FLAGS} --make $< -o $@
 

@@ -8,7 +8,7 @@ module = None
 imports = []
 props = []
 
-for filename in sys.argv[1:]:
+for filename in sys.argv[2:]:
     for line in file(filename):
         modulematch = modulerx.search(line)
         propmatch = proprx.search(line)
@@ -20,6 +20,8 @@ for filename in sys.argv[1:]:
         if propmatch:
             prop = propmatch.group(1)
             props.append('%s.%s' % (module, prop))
+
+sys.stdout = file(sys.argv[1], 'w')
 
 print 'module Main where'
 print
@@ -33,3 +35,4 @@ for prop in props:
     print '  putStr "%s: "' % prop
     print '  quickCheck %s' % prop
 
+sys.stdout.close()
