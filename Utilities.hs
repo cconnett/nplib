@@ -24,8 +24,10 @@ nub' n list
     | otherwise = nub' n $ currentSet ++ (drop n list)
     where currentSet = nub $ take n list
 
-prop_nub'_nub list = nub list == nub' (length list) list
-prop_nub'_subset list = length list >= 3 ==> S.fromList (nub' 3 list) `S.isSubsetOf` S.fromList list
+prop_nub'_nub (list::[Int]) =
+    nub list == nub' (length list) list
+prop_nub'_subset (list::[Int]) =
+    length list >= 3 ==> S.fromList (nub' 3 list) `S.isSubsetOf` S.fromList list
 
 filter3 pred3 [] = ([], [])
 filter3 pred3 (a:as) =
@@ -62,14 +64,14 @@ hasIndex [] c = False
 hasIndex list 0 = True
 hasIndex list c = (tail list) `hasIndex` (c-1)
 
-prop_FindFirstFinitePresent target list = any (>target) list ==>
+prop_FindFirstFinitePresent target (list::[Int]) = any (>target) list ==>
     ((fromJust $ findFirst (>target) (sort list)) ==
      (head $ dropWhile (<=target) (sort list)))
 
-prop_FindFirstFiniteAbsent target list =
+prop_FindFirstFiniteAbsent target (list::[Int]) =
     all (<=target) list ==> ((findFirst (>target) (sort list)) == Nothing)
 
-prop_FindFirstInfinite target starting = it == Just starting || it == Just (target + 1)
+prop_FindFirstInfinite target (starting::Int) = it == Just starting || it == Just (target + 1)
     where it = findFirst (>target) [starting..]
 
                
