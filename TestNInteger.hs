@@ -81,7 +81,7 @@ prop_multiplication aa bb =
                                          return c)
                  )
 prop_factor cc =
-    let factors = (take 5 $ fromJust $
+    let factors = (take 2 $ fromJust $
                    evalAllNProgram Minisat (do
                                              a::NInt8 <- new
                                              b::NInt8 <- new
