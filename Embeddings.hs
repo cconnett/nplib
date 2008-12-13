@@ -13,11 +13,11 @@ instance Cond Var where
 instance Cond Formula where
     condify = embedFormula
 
-if' :: Cond c => c -> Formula -> Formula -> Stateful ()
+if' :: (Cond c1, Cond c2, Cond c3) => c1 -> c2 -> c3 -> Stateful ()
 if' cond then' else' = do
   condVar <- condify cond
-  thenVar <- embedFormula then'
-  elseVar <- embedFormula else'
+  thenVar <- condify then'
+  elseVar <- condify else'
   assert $ makeEquivalent condVar thenVar
   assert $ makeOpposed condVar elseVar
 
