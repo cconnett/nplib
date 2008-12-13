@@ -1,8 +1,7 @@
 {-# OPTIONS -fglasgow-exts -fno-monomorphism-restriction #-}
+module SAT where
 
-module SAT
-    where
-
+import qualified Data.IntMap as IM
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.HashTable as HT
@@ -52,6 +51,10 @@ makeEquivalent v1 v2 = Formula [Clause [Not v1, Merely v2], Clause [Merely v1, N
 makeOpposed v1 v2 = Formula [Clause [Merely v1, Merely v2], Clause [Not v1, Not v2]]
 
 emptyFormula = Formula []
+
+formulaSatisfied (Formula f) answers = all (\(Clause c) -> any propositionTrue c) f
+    where propositionTrue (Merely v) = answers IM.! v
+          propositionTrue (Not v) = not $ answers IM.! v
 
 -- Show instances for Constraint and helper types
 instance Show Formula where
