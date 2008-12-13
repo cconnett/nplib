@@ -141,12 +141,13 @@ class (NVar k) => NIntegral k where
     fromNIntegral = fromVars . toVars
 
 
-m, m' :: (Integral a) => a -> Int
+m, mPos, mNeg :: (Integral a) => a -> Int
 m a
-    | a == 0 = 0
-    | a > 0 = m' a
-    | a < 0 = m' (abs a) - 1
-m' = (+1) . floor . (logBase 2) . fromIntegral
+    | a == 0 = 1
+    | a > 0 = mPos a
+    | a < 0 = mNeg (abs a)
+mPos = (+1) . floor . (logBase 2) . fromIntegral
+mNeg = (+0) . ceiling . (logBase 2) . fromIntegral
 
 width :: (NVar v) => v -> Int
 width = length . toVars
