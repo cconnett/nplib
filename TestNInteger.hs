@@ -12,43 +12,43 @@ import Data.Word
 import NVar
 import Debug.Trace
 
-prop_equal aa bb =
+prop_equal ss aa bb =
     (aa == bb) == (fromJust $
-                   execNProgram Minisat (do
-                                          let a::NInt8 = NInteger.fromInteger aa
-                                          let b::NInt8 = NInteger.fromInteger bb
-                                          a `equal` b >>= assert
+                   execNProgram ss (do
+                                     let a::NInt8 = NInteger.fromInteger aa
+                                     let b::NInt8 = NInteger.fromInteger bb
+                                     a `equal` b >>= assert
                                           )
                   )
-prop_notEqual aa bb =
+prop_notEqual ss aa bb =
     (aa /= bb) == (fromJust $
-                   execNProgram Minisat (do
-                                          let a::NInt8 = NInteger.fromInteger aa
-                                          let b::NInt8 = NInteger.fromInteger bb
-                                          a `notEqual` b >>= assert
+                   execNProgram ss (do
+                                     let a::NInt8 = NInteger.fromInteger aa
+                                     let b::NInt8 = NInteger.fromInteger bb
+                                     a `notEqual` b >>= assert
                                           )
                   )
-prop_leq aa bb =
+prop_leq ss aa bb =
     classify (aa < bb) "a < b" $
     classify (aa == bb) "a = b" $
     classify (aa > bb) "a > b" $
     (aa <= bb) == (fromJust $
-                   execNProgram Minisat (do
-                                          let a::NInt8 = NInteger.fromInteger aa
-                                          let b::NInt8 = NInteger.fromInteger bb
-                                          a `leq` b >>= assert
+                   execNProgram ss (do
+                                     let a::NInt8 = NInteger.fromInteger aa
+                                     let b::NInt8 = NInteger.fromInteger bb
+                                     a `leq` b >>= assert
                                           )
                   )
-prop_lt aa bb =
+prop_lt ss aa bb =
     classify (aa < bb) "a < b" $
     classify (aa == bb) "a = b" $
     classify (aa > bb) "a > b" $
     (aa < bb) == (fromJust $
-                  execNProgram Minisat (do
-                                         let a::NInt8 = NInteger.fromInteger aa
-                                         let b::NInt8 = NInteger.fromInteger bb
-                                         a `lt` b >>= assert
-                                         )
+                  execNProgram ss (do
+                                    let a::NInt8 = NInteger.fromInteger aa
+                                    let b::NInt8 = NInteger.fromInteger bb
+                                    a `lt` b >>= assert
+                                  )
                  )
 
 prop_asSignedInteger a =
@@ -56,38 +56,47 @@ prop_asSignedInteger a =
 prop_asUnsignedInteger (a::Integer) = a > 0 ==>
     a == fromIntegral (asUnsignedInteger (map (testBit a) [31,30..0]))
 
-prop_addition aa bb =
+prop_addition ss aa bb =
     (aa + bb) == (snd $
-                  evalNProgram Minisat (do
-                                         let a::NInt8 = NInteger.fromInteger aa
-                                         let b::NInt8 = NInteger.fromInteger bb
-                                         c <- add a b
-                                         return c)
+                  evalNProgram ss (do
+                                    let a::NInt8 = NInteger.fromInteger aa
+                                    let b::NInt8 = NInteger.fromInteger bb
+                                    c <- add a b
+                                    return c)
                  )
-prop_subtraction aa bb =
+prop_subtraction ss aa bb =
     (aa - bb) == (snd $
-                  evalNProgram Minisat (do
-                                         let a::NInt8 = NInteger.fromInteger aa
-                                         let b::NInt8 = NInteger.fromInteger bb
-                                         c <- sub a b
-                                         return c)
+                  evalNProgram ss (do
+                                    let a::NInt8 = NInteger.fromInteger aa
+                                    let b::NInt8 = NInteger.fromInteger bb
+                                    c <- sub a b
+                                    return c)
                  )
-prop_multiplication aa bb =
+prop_negation ss aa =
+    aa == (snd $
+           evalNProgram ss (do
+                             let negativeA::NInt8 = NInteger.fromInteger (-aa)
+                             b::NInt8 <- new
+                             negativeB <- NInteger.negate b
+                             negativeA`equal`negativeB >>= assert
+                             return b)
+          )
+prop_multiplication ss aa bb =
     (aa * bb) == (snd $
-                  evalNProgram Minisat (do
-                                         let a::NInt16 = NInteger.fromInteger aa
-                                         let b::NInt16 = NInteger.fromInteger bb
-                                         c <- mul a b
-                                         return c)
+                  evalNProgram ss (do
+                                    let a::NInt16 = NInteger.fromInteger aa
+                                    let b::NInt16 = NInteger.fromInteger bb
+                                    c <- mul a b
+                                    return c)
                  )
-prop_factor cc =
+prop_factor ss cc =
     let factors = (take 2 $ fromJust $
-                   evalAllNProgram Minisat (do
-                                             a::NInt8 <- new
-                                             b::NInt8 <- new
-                                             let c::NInt8 = NInteger.fromInteger cc
-                                             c' <- mul a b
-                                             equal c c' >>= assert
-                                             return (a,b)) :: [(Integer,Integer)]
+                   evalAllNProgram ss (do
+                                        a::NInt8 <- new
+                                        b::NInt8 <- new
+                                        let c::NInt8 = NInteger.fromInteger cc
+                                        c' <- mul a b
+                                        equal c c' >>= assert
+                                        return (a,b)) :: [(Integer,Integer)]
                   )
     in all (\(aa, bb) -> (aa * bb) `mod` 256 == cc `mod` 256) factors

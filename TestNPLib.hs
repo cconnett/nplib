@@ -15,32 +15,38 @@ import Voting hiding (beats)
 
 import Test.QuickCheck
 
-mode = RSat
-
 prop_doubleNegation prop = prop == (neg $ neg $ prop)
 
-prop_if' a b =
+prop_if' ss a b =
     (a==b) == (snd $
-               evalNProgram Minisat (do
-                                      cond::Var <- new
-                                      let a'::NInteger = NInteger.fromInteger a
-                                      let b'::NInteger = NInteger.fromInteger b
-                                      eq <- a'`equal`b'
-                                      if' cond
-                                          (eq)
-                                          (emptyFormula)
-                                      if' eq
-                                          (emptyFormula)
-                                          (makeFalse cond)
-                                      return cond)
+               evalNProgram ss (do
+                                 cond::Var <- new
+                                 let a'::NInteger = NInteger.fromInteger a
+                                 let b'::NInteger = NInteger.fromInteger b
+                                 eq <- a'`equal`b'
+                                 if' cond
+                                     (eq)
+                                     (emptyFormula)
+                                 if' eq
+                                     (emptyFormula)
+                                     (makeFalse cond)
+                                 return cond)
               )
-prop_deny a b =
+prop_interpretInteger ss a =
+    a == (snd $
+          evalNProgram ss (do
+                            let a'::NInteger = NInteger.fromInteger a
+                            b'::NInteger <- fixedWidthNew (width a')
+                            a'`equal`b' >>= assert
+                            return b')
+         )
+prop_deny ss a b =
     (a/=b) == (fromJust $
-               execNProgram Minisat (do
-                                      let a'::NInteger = NInteger.fromInteger a
-                                      let b'::NInteger = NInteger.fromInteger b
-                                      eq <- a'`equal`b'
-                                      deny eq)
+               execNProgram ss (do
+                                 let a'::NInteger = NInteger.fromInteger a
+                                 let b'::NInteger = NInteger.fromInteger b
+                                 eq <- a'`equal`b'
+                                 deny eq)
               )
 prop_assertConjoinShow formula =
     let (NProgram baseFormula _) = emptyNProgram in
