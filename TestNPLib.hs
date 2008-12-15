@@ -1,5 +1,6 @@
 module TestNPLib where
 
+import Control.Monad.State
 import Data.Maybe
 import Elections
 import Embeddings
@@ -29,8 +30,8 @@ prop_if' a b =
                                           (eq)
                                           (emptyFormula)
                                       if' eq
-                                         (emptyFormula)
-                                         (makeFalse cond)
+                                          (emptyFormula)
+                                          (makeFalse cond)
                                       return cond)
               )
 prop_deny a b =
