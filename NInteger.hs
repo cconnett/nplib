@@ -39,7 +39,7 @@ import qualified Data.Bits as Bits
 import Data.Word
 import Data.Int
 
-import Utilities
+import Tracing
 
 newtype NInt8  = NInt8  [Var] deriving (Show, Read)
 newtype NInt16 = NInt16 [Var] deriving (Show, Read)

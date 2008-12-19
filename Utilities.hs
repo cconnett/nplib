@@ -13,10 +13,6 @@ import Debug.Trace
 import Test.QuickCheck
 import Foreign (unsafePerformIO)
 
-debug = True
-myTrace = if debug then trace else flip const
-traceIt s = myTrace ("TRACEIT:" ++ show s) s
-
 -- nub with an upper limit
 nub' :: Eq a => Int -> [a] -> [a]
 nub' n list

@@ -11,7 +11,7 @@ import Voting hiding (beats)
 import qualified Data.Map as M
 import qualified Voting (beats)
 
-import Utilities
+import Tracing
 
 -- Reductions of manipulation instances for specific classes of voting
 -- rules to mixed SAT and ILP problem instance.

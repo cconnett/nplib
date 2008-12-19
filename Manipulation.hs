@@ -19,7 +19,7 @@ import Voting hiding (beats)
 import qualified Data.Map as M
 import qualified Data.Set as S
 
-import Debug.Trace
+import Tracing
 
 -- Conitzer and Sandholm's Find-Two-Winners [CS03]
 findTwoWinners :: (Eq a) => Rule a -> Int -> [Vote a] -> ([Candidate a], [Candidate a])
