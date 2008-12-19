@@ -41,7 +41,7 @@ negateFormula formula = do
   surrogate <- embedFormula formula
   return $ Formula [Clause [Not surrogate]]
 
-deny :: Formula -> State NProgram ()
+deny :: Formula -> Stateful ()
 deny = (>>= assert) . negateFormula
 
 embedFormulas = mapM embedFormula

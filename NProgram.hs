@@ -1,34 +1,156 @@
 {-# OPTIONS -fglasgow-exts #-}
-module NProgram where
+module NProgram
+    (Stateful
+    ,takeSatVar
+    ,takeSatVars
+    ,assert
+    ,assertAll
+    ,ntrace
+
+    ,NVar
+    ,toVars
+    ,fromVars
+    ,true
+    ,false
+    ,new
+
+    ,Interpret
+    ,interpret
+    ,lookupVarAnswers
+
+    ,execNProgram
+    ,evalNProgram
+    ,evalAllNProgram
+
+    )
+    where
 
 import Control.Monad.State
 import SAT
+import SatSolvers
+import qualified Data.IntMap as IM
 
-data NProgram = NProgram Formula [Var]
+data NTrace = forall v d. Interpret v d => NTrace v (v -> IM.IntMap Bool -> d)
+
+data NProgram = NProgram Formula [Var] [(String, NTrace)]
 instance Show NProgram where
-    show (NProgram formula _) = show formula
+    show (NProgram formula _ _) = show formula
 
 type Stateful a = State NProgram a
 
 -- Empty program has first and second variables as a reference false
 -- and true respectively.
 emptyNProgram :: NProgram
-emptyNProgram = NProgram (Formula [Clause [Not 1], Clause [Merely 2]]) [3..]
+emptyNProgram = NProgram (Formula [Clause [Not 1], Clause [Merely 2]]) [3..] []
 
 false = 1 :: Var
 true = 2 :: Var
 
 takeSatVar :: State NProgram Var
 takeSatVar = do
-  NProgram formula unusedVars <- get
-  put $ NProgram formula (tail unusedVars)
+  NProgram formula unusedVars traces <- get
+  put $ NProgram formula (tail unusedVars) traces
   return $ head unusedVars
 
 takeSatVars n = replicateM n takeSatVar
 
 assert :: Formula -> State NProgram ()
 assert formula = do
-  NProgram f unusedVars <- get
-  put $ NProgram (conjoin [f, formula]) unusedVars
+  NProgram f unusedVars traces <- get
+  put $ NProgram (conjoin [f, formula]) unusedVars traces
 assertAll :: [Formula] -> State NProgram ()
 assertAll = assert . conjoin
+
+ntrace tag v =  do
+  NProgram f unusedVars traces <- get
+  put $ NProgram f unusedVars ((tag, NTrace v interpret):traces)
+
+-- The NVar class are types that represent complex non-deterministic
+-- structures.
+class NVar v where
+    -- Convert to and from a list of Vars.
+    toVars :: v -> [Var]
+    fromVars :: [Var] -> v
+
+    -- Statefully allocate new variables
+    new :: Stateful v
+
+-- The Interpret class allows the interpretation of a (usually) NVar
+-- type into a related deterministic type, given an IntMap Bool of the
+-- assignments to the Vars in the formula it was used in.
+class Interpret v d where
+    interpret :: v -> IM.IntMap Bool -> d
+
+-- NVar and Interpret instances for Var
+instance NVar Var where
+    toVars var = [var]
+    fromVars vars = last vars
+
+    new = takeSatVar
+instance Interpret Var Bool where
+    interpret v answers = answers IM.! v
+instance Interpret Formula Bool where
+    interpret formula answers = formulaSatisfied formula answers
+
+lookupVarAnswers v answers = map (answers IM.!) (toVars v)
+
+-- Interpret instances for tuples up to 15.
+instance (Interpret v1 d1, Interpret v2 d2) => Interpret (v1, v2) (d1, d2) where
+    interpret (v1, v2) answers = (interpret v1 answers, interpret v2 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3) => Interpret (v1, v2, v3) (d1, d2, d3) where
+    interpret (v1, v2, v3) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4) => Interpret (v1, v2, v3, v4) (d1, d2, d3, d4) where
+    interpret (v1, v2, v3, v4) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5) => Interpret (v1, v2, v3, v4, v5) (d1, d2, d3, d4, d5) where
+    interpret (v1, v2, v3, v4, v5) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6) => Interpret (v1, v2, v3, v4, v5, v6) (d1, d2, d3, d4, d5, d6) where
+    interpret (v1, v2, v3, v4, v5, v6) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7) => Interpret (v1, v2, v3, v4, v5, v6, v7) (d1, d2, d3, d4, d5, d6, d7) where
+    interpret (v1, v2, v3, v4, v5, v6, v7) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8) (d1, d2, d3, d4, d5, d6, d7, d8) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9) (d1, d2, d3, d4, d5, d6, d7, d8, d9) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12, Interpret v13 d13) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12, Interpret v13 d13, Interpret v14 d14) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers, interpret v14 answers)
+instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12, Interpret v13 d13, Interpret v14 d14, Interpret v15 d15) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15) where
+    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers, interpret v14 answers, interpret v15 answers)
+
+-- Interpret instance for list of interpretables.
+instance (Interpret v d) => Interpret [v] [d] where
+    interpret vs answers = map ((flip interpret) answers) vs
+
+-- Solving NPrograms with a SAT Solver
+solveNProgram :: (a -> IM.IntMap Bool -> b) -> SatSolver -> Stateful a -> Maybe [b]
+solveNProgram interpreter ss nprogramComputation =
+    let (theNVars, NProgram formula unusedVars traces) = runState nprogramComputation emptyNProgram
+        numVars = head unusedVars - 1
+        solutions = solveAll ss (numVars, formula)
+    in case solutions of
+         Just [] -> Just [] -- error "Unsatisfiable formula"
+         Just truthMaps -> Just $ map (interpreter theNVars) truthMaps
+         Nothing -> Nothing -- error "Solve time limit exceeded"
+
+reduceSolutions :: Maybe [b] -> (Maybe Bool, b)
+reduceSolutions Nothing = (Nothing, error "Solve time limit exceeded")
+reduceSolutions (Just []) = (Just False, error "Unsatisfiable formula")
+reduceSolutions (Just (solution:solutions)) = (Just True, solution)
+
+evalAllNProgram :: (Interpret a b) => SatSolver -> State NProgram a -> Maybe [b]
+evalAllNProgram = solveNProgram interpret
+
+evalNProgram :: (Interpret a b) => SatSolver -> State NProgram a -> (Maybe Bool, b)
+evalNProgram ss nprogramComputation =
+    reduceSolutions $ evalAllNProgram ss nprogramComputation
+
+execNProgram :: SatSolver -> State NProgram a -> Maybe Bool
+execNProgram ss nprogramComputation =
+    fst $ reduceSolutions $ solveNProgram (const (const ())) ss nprogramComputation

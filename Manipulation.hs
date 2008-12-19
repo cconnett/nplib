@@ -9,10 +9,10 @@ import Embeddings
 import Foreign (unsafePerformIO)
 import GHC.Conc
 import Maybe
+import NProgram
 import Prelude hiding (catch)
 import Reductions
 import SatSolvers
-import Solving
 import Test.QuickCheck
 import Utilities
 import Voting hiding (beats)

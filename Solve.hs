@@ -10,7 +10,6 @@ import Debug.Trace
 import Elections
 import Manipulation
 import SatSolvers
-import Solving
 import System
 import System.IO
 import Voting

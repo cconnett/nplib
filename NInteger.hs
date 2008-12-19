@@ -28,8 +28,6 @@ module NInteger where
 import NProgram
 import SAT
 import Embeddings
-import NVar
-import qualified NVar
 
 import Prelude hiding (negate)
 import Control.Monad.State
