@@ -315,7 +315,7 @@ nsum summands = do
   frontSum <- nsum frontHalf
   backSum <- nsum backHalf
   sum <- add frontSum backSum
-  return $ (myTrace (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf)) sum)
+  return $ {-(myTrace (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf)) -}sum
   where frontHalf = take half summands
         backHalf = drop half summands
         half = (length summands) `div` 2

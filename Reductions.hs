@@ -1,58 +1,47 @@
 module Reductions where
 
-import Voting hiding (beats)
-import ILPSAT
-import ILPSATReduction
-import ReductionComponents
-import Hash
-import Embeddings
-import Data.Ratio
-
+import Control.Monad.State
 import Data.List
+import Data.Ratio
+import Embeddings
+import NInteger
+import NProgram
+import ReductionComponents
+import SAT
+import Voting hiding (beats)
 import qualified Data.Map as M
 
 import Utilities
 
-type MPR a = [Vote a] -> (Problem (VoteDatum a), [Vote a] -> Int -> Candidate a -> Problem (VoteDatum a))
-instance (Num a, Show a, Ord a, Hash a) => Read (MPR a)  where
+type ManipulationProblem = [Vote Int] -> Int -> Int -> State NProgram ()
+instance Read (ManipulationProblem)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
-    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
+--    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
-    readsPrec _ "irv" = [(irvManipulation, "")]
-    readsPrec _ "copeland" = [(copelandManipulation (1%2), "")]
+--    readsPrec _ "irv" = [(irvManipulation, "")]
+--    readsPrec _ "copeland" = [(copelandManipulation (1%2), "")]
     readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\ncopeland\n"
 
-scoringProtocolManipulation :: (Eq a, Integral k, Show a) =>
-                               (k -> [k]) -> [Vote a] ->
-                               (Problem (VoteDatum a), [Vote a] -> Int -> Candidate a -> Problem (VoteDatum a))
-scoringProtocolManipulation s votes =
-    let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..length votes + 1]
-        ballots = voterSet ++ manipulatorSet
-        candidates = extractCandidates votes
-        positions = [0..length candidates-1]
-        scoreList = s (fromIntegral $ length candidates) in
-    (concat [manipulatorPositionalPositionInjection manipulatorSet candidates positions,
-             manipulatorPositionalPositionSurjection manipulatorSet candidates positions] ++
-     concat
-     [outscores ballots positions scoreList winner loser $ \winnerOutscoresLoser ->
-      [Formula [Clause [neg $ winnerOutscoresLoser, Merely $ Eliminated 0 loser]]]
-          | winner <- candidates,
-            loser  <- delete winner candidates] ++
-     concat
-     [pluralizeEmbedding [outscores ballots positions scoreList d c | d <- delete c candidates]
-     $ \cOutscoredByOthers ->
-         [Formula [Clause $ [neg $ Merely $ Eliminated 0 c] ++ cOutscoredByOthers]]
-             | c <- candidates]
-    , \votes manipulators target ->
-        count ballots (length votes + manipulators) ++
-        nonManipulatorPositionalVotes votes voterSet candidates positions ++
-     -- Target candidate remains, with everyone else eliminated, and therefore wins
-        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 0 c]
-                      | c <- candidates]]
-    )
-
+scoringProtocolManipulation :: (Int -> [Int]) -> ManipulationProblem
+scoringProtocolManipulation scoreFunc votes target numManipulators =
+    let numNonmanipulators = length votes
+        numCandidates = length $ extractCandidates votes
+        candidates = [0 .. numCandidates - 1]
+        positions = [0 .. numCandidates - 1]
+        voters = [0.. numNonmanipulators + numManipulators - 1]
+        scoreList = scoreFunc (fromIntegral $ length candidates) in
+    do
+      ballots <- makePositionalBallots votes candidates positions numManipulators
+      candidateScores <- mapM (getScore ballots voters positions scoreList) candidates
+      sequence_ [(candidateScores !! loser) `lt` (candidateScores !! target) >>= assert
+                 | loser  <- delete target candidates]
+{-
+      -- Target candidate remains, with everyone else eliminated, and therefore wins
+      assertAll $ [(if c == target then makeFalse else makeTrue) $ eliminations !! c
+                   | c <- candidates]
+-}
+{-
 pluralityWithRunoffManipulation votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..length votes + 1]
@@ -165,3 +154,4 @@ copelandManipulation tieValue votes =
         [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 0 c]
                      | c <- candidates]]
     )
+-}

@@ -49,6 +49,9 @@ makeTrue v = Formula [Clause [Merely v]]
 makeFalse v = Formula [Clause [Not v]]
 makeEquivalent v1 v2 = Formula [Clause [Not v1, Merely v2], Clause [Merely v1, Not v2]]
 makeOpposed v1 v2 = Formula [Clause [Merely v1, Merely v2], Clause [Not v1, Not v2]]
+v1 `implies` v2 = Formula [Clause [Not v1, Merely v2]]
+v `impliesSome` vs = Formula [Clause (Not v : map Merely vs)]
+--v `impliedBySome` vs = Formula [Clause (Merely v : map Not vs)]
 
 emptyFormula = Formula []
 

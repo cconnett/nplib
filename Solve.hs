@@ -3,20 +3,20 @@
 module Main
     where
 
+import Control.Monad
+import Data.List
+import Data.Maybe
+import Debug.Trace
+import Elections
 import Manipulation
-import ILPSAT
 import SatSolvers
+import Solving
 import System
 import System.IO
 import Voting
-import Elections
-import Debug.Trace
-import Data.List
-import Maybe
-import Control.Monad
-import Test.QuickCheck
-import Solvers
 
+import Utilities
+    
 satSolver = Minisat
 
 pullElections electionsRaw electionsList =
@@ -36,12 +36,9 @@ main = do
        let method = args !! 0
            winnerCalculator = case method of
                                 "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
-                                "f2w" -> findTwoWinners (read (args !! 1))
-                                "sat" -> possibleWinnersBySolver satSolver (read (args !! 1)) (snd $ head elections)
-                                "hyb" -> hybridSolver (snd $ head elections)
-                                          (possibleWinnersByBruteForce (read (args !! 1)))
-                                          (possibleWinnersBySolver satSolver (read (args !! 1)) (snd $ head elections))
-                                _     -> error "Supported methods are \nbf\nf2w\nsat\nhyb"
+                                --"f2w" -> findTwoWinners (read (args !! 1))
+                                "sat" -> possibleWinnersBySolver satSolver (read (args !! 1))
+                                _     -> error "Supported methods are \nbf\nf2w\nsat"
        sequence $
           [do let (theMinimumManipulatorsLower, theMinimumManipulatorsUpper) =
                       minimumManipulators winnerCalculator election

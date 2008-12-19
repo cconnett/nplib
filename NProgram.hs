@@ -30,3 +30,5 @@ assert :: Formula -> State NProgram ()
 assert formula = do
   NProgram f unusedVars <- get
   put $ NProgram (conjoin [f, formula]) unusedVars
+assertAll :: [Formula] -> State NProgram ()
+assertAll = assert . conjoin

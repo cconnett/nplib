@@ -1,22 +1,23 @@
 module ReductionComponents where
 
-import Voting hiding (beats)
-import qualified Voting (beats)
-import ILPSAT
-import ILPSATReduction
-import Embeddings
-import Hash
-import Data.Ratio
-import qualified Data.Map as M
-
+import Control.Monad
 import Data.List
+import Data.Ratio
+import Embeddings
+import SAT
+import NInteger
+import NProgram
+import Voting hiding (beats)
+import qualified Data.Map as M
+import qualified Voting (beats)
+
+import Utilities
 
 -- Reductions of manipulation instances for specific classes of voting
 -- rules to mixed SAT and ILP problem instance.
 data VoteDatum a = VoteDatum {vdVoter :: Int, vdCandidate :: Candidate a, vdPosition :: Int}
                  | PairwiseDatum {pwVoter :: Int, pwCandidateA, pwCandidateB :: Candidate a}
                  | Eliminated {eRound :: Int, eCandidate :: Candidate a}
-                 | Counts {cVoter :: Int}
     deriving (Show, Read, Eq, Ord)
 isVoteDatum (VoteDatum _ _ _) = True
 isVoteDatum _ = False
@@ -25,50 +26,47 @@ isPairwiseDatum _ = False
 isElimination (Eliminated _ _) = True
 isElimination _ = False
 
--- If some voter counts, all previous voters count.
-count ballots lastVoter =
-    let realLastVoter = max 0 $ min (last ballots) lastVoter in
-    [Formula [Clause [neg $ Merely $ Counts v, Merely $ Counts (v-1)]
-                  | v <- ballots, v - 1 >= 0],
-     Formula [Clause [Merely $ Counts v, neg $ Merely $ Counts (v+1)]
-                  | v <- ballots, v + 1 <= last ballots],
-     Formula [Clause [Merely $ Counts lastVoter]],
-     Formula [Clause [neg $ Merely $ Counts (lastVoter + 1)]]
-    ]
-
+type Ballot = [[Var]]
+                  
 -- Non-manipulators' positional votes, directly encoded.
-nonManipulatorPositionalVotes votes voterSet candidates positions =
-    [Formula $ Clause [Merely $ VoteDatum voter candidate correctPosition] :
-               [Clause [neg $ Merely $ VoteDatum voter candidate position]
-                    | position <- positions, position /= correctPosition]
-     | (voter, vote) <- zip voterSet votes,
-       (candidate, correctPosition) <- zip (fromVote vote) positions]
-
-nonManipulatorPairwiseVotes votes voterSet candidates =
-    [Formula [Clause [(if Voting.beats vote candidateA candidateB then id else neg) $
-                      Merely $ PairwiseDatum voter candidateA candidateB]]
-         | (voter, vote) <- zip voterSet votes,
-           candidateA <- candidates,
-           candidateB <- candidates,
-           candidateA /= candidateB]
-
+nonManipulatorPositionalVotes :: [Vote Int] -> [Ballot] -> [Int] -> [Int] -> Stateful ()
+nonManipulatorPositionalVotes votes ballots candidates positions =
+    sequence_ [do
+                assert $ makeTrue (ballots !! voter !! candidate !! correctPosition)
+                assertAll [(makeFalse (ballots !! voter !! candidate !! position))
+                           | position <- positions, position /= correctPosition]
+               | (voter, vote) <- zip [0..] votes,
+                 (candidate, correctPosition) <- (zip (map fromCandidate $ fromVote vote) positions)]
+{-
+nonManipulatorPairwiseVotes :: [Vote (Candidate a)] -> [Ballot] -> [Int] -> Stateful ()
+nonManipulatorPairwiseVotes votes ballots candidates =
+    assertAll [(if Voting.beats vote (Candidate $ candidateA+1) (Candidate $ candidateB+1) then makeTrue else makeFalse)
+               (ballots !! voter !! candidateA !! candidateB)
+              | (voter, vote) <- zip [0..] votes,
+                candidateA <- candidates,
+                candidateB <- candidates,
+                candidateA /= candidateB]
+-}
 -- Manipulator vote constraints (no two candidates in same position).
-manipulatorPositionalPositionInjection manipulatorSet candidates positions =
-    [Formula
-     [Clause [neg $ Merely (VoteDatum manipulator a position), neg $ Merely (VoteDatum manipulator b position)]
-          | manipulator <- manipulatorSet,
-            a <- candidates, b <- candidates, a /= b,
-            position <- positions]]
+manipulatorPositionalPositionInjection :: [Ballot] -> [Int] -> [Int] -> Stateful ()
+manipulatorPositionalPositionInjection manipulatorBallots candidates positions =
+    assert $ 
+    Formula [Clause [Not ((traceIt ballot) !! a !! position), Not (ballot !! b !! position)]
+             | ballot <- manipulatorBallots,
+               a <- candidates, b <- candidates, a /= b,
+               position <- positions]
 
 -- Manipulator vote constraints (every candidate in some position).
-manipulatorPositionalPositionSurjection manipulatorSet candidates positions =
-    [Formula
-     [Clause [Merely (VoteDatum manipulator c position) | position <- positions]
-          | manipulator <- manipulatorSet, c <- candidates]]
+manipulatorPositionalPositionSurjection :: [Ballot] -> [Int] -> [Int] -> Stateful ()
+manipulatorPositionalPositionSurjection manipulatorBallots candidates positions =
+    assertAll $
+    [Formula [Clause [Merely ((traceIt ballot) !! c !! position) | position <- positions]]
+     | ballot <- manipulatorBallots,
+       c <- candidates]
 
 -- NB: that no candidate is in more than one position is implied by
 -- the previous two constraints.  (Injection + Surjection = 1-to-1)
-
+{-
 -- Pairwise beat relationship is anti-symmetric and anti-reflexive
 manipulatorPairwiseBeatsASAR manipulatorSet candidates =
     [Formula [Clause [neg $ Merely (PairwiseDatum voter candidateA candidateB),
@@ -86,19 +84,21 @@ manipulatorPairwiseBeatsTotal manipulatorSet candidates =
                 candidateA <- candidates,
                 candidateB <- candidates,
                 candidateA < candidateB]]
-
+-}
 -- Basic constraints for voting rules using elimination.
-eliminationBasics candidates rounds =
+eliminationBasics eliminations candidates rounds = do
     -- Everyone's in to start (all eliminations for round 0 are false)
-    [Formula [Clause [neg $ Merely (Eliminated 0 candidate)] | candidate <- candidates]] ++
+    assertAll [makeFalse (eliminations !! 0 !! candidate)
+               | candidate <- candidates]
     -- Cascading elimination status
-    [Formula [Clause [neg $ Merely (Eliminated  round    candidate),
-                            Merely (Eliminated (round+1) candidate)]
-              | round <- tail $ init $ rounds, -- No eliminations in the first or last rounds.
-                candidate <- candidates]]
+    assertAll [(eliminations !!  round    !! candidate) `implies`
+               (eliminations !! (round+1) !! candidate)
+               | round <- tail $ init $ rounds, -- No eliminations in the first or last rounds.
+                 candidate <- candidates]
 
--- Every ballot (that counts) must give a point to one candidate and
--- only one candidate in all but the last round.
+-- Every ballot must give a point to one candidate and only one
+-- candidate in all but the last round.
+{-
 firstPlacePoints candidates ballots rounds =
         (concat [points candidates candidates [v] [r] $
                  \pointCsVR -> [Formula [Clause $ (neg $ Merely $ Counts v) : pointCsVR]]
@@ -114,27 +114,48 @@ firstPlacePoints candidates ballots rounds =
                    r <- init rounds,
                    a <- candidates,
                    b <- candidates, a < b])
+-}
 
+makePositionalBallots votes candidates positions numManipulators =
+    let numCandidates = length candidates
+        numNonmanipulators = length votes
+        numVoters = numNonmanipulators + numManipulators
+        numPositions = length candidates
+    in do
+      ballots <- replicateM numVoters (replicateM numCandidates (takeSatVars numPositions))
+      let manipulatorBallots = drop numNonmanipulators ballots
+      let nonManipulatorBallots = take numNonmanipulators ballots
+      --manipulatorPositionalPositionInjection manipulatorBallots candidates positions
+      --manipulatorPositionalPositionSurjection manipulatorBallots candidates positions
+      --nonManipulatorPositionalVotes votes nonManipulatorBallots candidates positions
+      return ballots
+{-
+makePairwiseBallots votes candidates numManipulators =
+    let numCandidates = length candidates
+        numNonmanipulators = length votes
+        numVoters = numNonmanipulators + numManipulators
+    in do
+      ballots <- replicateM numVoters (replicateM numCandidates (takeSatVars numCandidates))
+
+      let manipulatorBallots = drop numNonmanipulators ballots
+      let nonManipulatorBallots = take numNonmanipulators ballots
+
+      manipulatorPairwiseBeatsASAR manipulatorBallots candidates
+      manipulatorPairwiseBeatsTotal manipulatorBallots candidates
+      nonManipulatorPairwiseVotes votes nonManipulatorBallots candidates
+
+      return ballots
+-}
 --Scoring protocol related embeddings
-outscores ballots positions scoreList winner loser =
-    let tag = (show winner ++ " outscores " ++ show loser) in
-    embedProblem tag $ trans (fromIntegral $ hash tag) $
-    -- Since the reduction from ILP to SAT assumes the inequality is
-    -- <=, points are bad: points for opponents are positive, and
-    -- points for our target are negative.  The target wins if the
-    -- total is <= -1.
-    Inequality ([( fromIntegral (scoreList!!position),
-                                    [Formula [Clause [Merely $ Counts voter],
-                                              Clause [Merely $ VoteDatum voter loser position]]])
-                 | voter <- ballots,
-                   position <- positions] ++
-                [(-fromIntegral (scoreList!!position),
-                                    [Formula [Clause [Merely $ Counts voter],
-                                              Clause [Merely $ VoteDatum voter winner position]]])
-                 | voter <- ballots,
-                   position <- positions],
-                -1)
+getScore :: [Ballot] -> [Int] -> [Int] -> [Int] -> Int -> Stateful NInteger
+getScore ballots voters positions scoreList candidate = do
+  scores <- sequence [mul1bit (NInteger.fromInteger $ fromIntegral $ (scoreList !! position))
+                                 (ballots !! voter !! candidate !! position)
+                     | voter <- voters,
+                       position <- positions]
+  nsum scores
 
+{-
 -- IRV and pluralityWithRunoff embeddings
 beats candidates ballots
        a b r = embedProblem (show a ++ " beats " ++ show b ++ " in round " ++ show r) $
@@ -172,17 +193,12 @@ losses candidates ballots
                                       | a <- delete c candidates])
 
 --shouldBeEliminated :: Proposition (VoteDatum Int) -> [Proposition (VoteDatum Int)] -> Int -> Candidate Int -> Embedding (VoteDatum Int)
-shouldBeEliminated allOthersEliminated victories
-                   r c = (embedConstraint (show c ++ " should be eliminated for round " ++ show (r+1))
-                         (Formula $ Clause [neg allOthersEliminated] :
-                          [Clause [neg victory] | victory <- victories]) ) -- :: Embedding (VoteDatum a)
-
---fullShouldBeEliminated :: [Candidate a] -> [Int] -> Int -> Candidate a -> Embedding (VoteDatum a)
-fullShouldBeEliminated candidates ballots
-                       r c lambda = allOthersEliminated candidates r c $ \aoe ->
-                                    victories candidates ballots r c $ \vics ->
-                                    shouldBeEliminated aoe vics r c lambda
-
+shouldBeEliminated allOthersEliminated victories =
+--                   r c = (embedConstraint (show c ++ " should be eliminated for round " ++ show (r+1))
+                         makeFalse allOthersEliminated >>= assert
+                          mapM (assert . makeFalse) victories
+-}
+{-
 -- Copeland voting components
 pairwiseVictory ballots c d =
     let tag = (show c ++ " defeats " ++ show d) in
@@ -211,8 +227,9 @@ copelandScoreBetter tieValue pvm candidates c d =
        pluralizeEmbedding [pairwiseTie pvm d e | e <- delete d candidates] $ \dTies ->
        pluralizeEmbedding [pairwiseTie pvm c d | e <- delete c candidates] $ \cTies ->
        trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
-       Inequality ([( ww, propositionToProblem dVic) | dVic <- dVics] ++
-                   [(-ww, propositionToProblem cVic) | cVic <- cVics] ++
-                   [( wt, propositionToProblem dTie) | dTie <- dTies] ++
-                   [(-wt, propositionToProblem cTie) | cTie <- cTies],
+       Inequality ([( ww, makeTrue dVic) | dVic <- dVics] ++
+                   [(-ww, makeTrue cVic) | cVic <- cVics] ++
+                   [( wt, makeTrue dTie) | dTie <- dTies] ++
+                   [(-wt, makeTrue cTie) | cTie <- cTies],
                    -1)
+-}
