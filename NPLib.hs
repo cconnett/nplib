@@ -26,13 +26,14 @@ module NPLib
     where
 
 import Control.Monad.State
+import Debug.Trace
 import SAT
 import SatSolvers
 import qualified Data.IntMap as IM
 
-data NTrace = forall v d. Interpret v d => NTrace v (v -> IM.IntMap Bool -> d)
+data NTrace = forall v d. (Interpret v d, Show d) => NTrace String v (v -> IM.IntMap Bool -> d)
 
-data NProgram = NProgram Formula [Var] [(String, NTrace)]
+data NProgram = NProgram Formula [Var] [NTrace]
 instance Show NProgram where
     show (NProgram formula _ _) = show formula
 
@@ -63,7 +64,8 @@ assertAll = assert . conjoin
 
 ntrace tag v =  do
   NProgram f unusedVars traces <- get
-  put $ NProgram f unusedVars ((tag, NTrace v interpret):traces)
+  put $ NProgram f unusedVars ((NTrace tag v interpret):traces)
+  return ()
 
 -- The NVar class are types that represent complex non-deterministic
 -- structures.
@@ -128,6 +130,9 @@ instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, In
 instance (Interpret v d) => Interpret [v] [d] where
     interpret vs answers = map ((flip interpret) answers) vs
 
+instance (Interpret v ()) where
+    interpret v answers = ()
+                           
 -- Solving NPrograms with a SAT Solver
 solveNProgram :: (a -> IM.IntMap Bool -> b) -> SatSolver -> Stateful a -> Maybe [b]
 solveNProgram interpreter ss nprogramComputation =
@@ -136,9 +141,17 @@ solveNProgram interpreter ss nprogramComputation =
         solutions = solveAll ss (numVars, formula)
     in case solutions of
          Just [] -> Just [] -- error "Unsatisfiable formula"
-         Just truthMaps -> Just $ map (interpreter theNVars) truthMaps
+         Just truthMaps -> Just $ map (interpreter theNVars) $
+                           map (traceTraces traces) $
+                           truthMaps
          Nothing -> Nothing -- error "Solve time limit exceeded"
 
+traceTraces :: [NTrace] -> (IM.IntMap Bool) -> (IM.IntMap Bool)
+traceTraces traces tm =
+    trace (concatMap (\(NTrace tag v interpret) ->
+                          "NTrace: " ++ tag ++ " = " ++ show (interpret v tm) ++ "\n") traces)
+    tm
+                    
 reduceSolutions :: Maybe [b] -> (Maybe Bool, b)
 reduceSolutions Nothing = (Nothing, error "Solve time limit exceeded")
 reduceSolutions (Just []) = (Just False, error "Unsatisfiable formula")

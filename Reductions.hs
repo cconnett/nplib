@@ -32,6 +32,7 @@ scoringProtocolManipulation scoreFunc votes target numManipulators =
     do
       ballots <- makePositionalBallots votes candidates positions numManipulators
       candidateScores <- mapM (getScore ballots voters positions scoreList) candidates
+      --ntrace "candidate scores" candidateScores
       sequence_ [(candidateScores !! loser) `lt` (candidateScores !! target) >>= assert
                  | loser  <- delete target candidates]
 {-
