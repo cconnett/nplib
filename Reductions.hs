@@ -5,7 +5,7 @@ import Data.List
 import Data.Ratio
 import Embeddings
 import NInteger
-import NProgram
+import NPLib
 import ReductionComponents
 import SAT
 import Voting hiding (beats)

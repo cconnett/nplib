@@ -9,7 +9,7 @@ import Embeddings
 import Foreign (unsafePerformIO)
 import GHC.Conc
 import Maybe
-import NProgram
+import NPLib
 import Prelude hiding (catch)
 import Reductions
 import SatSolvers

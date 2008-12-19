@@ -3,7 +3,7 @@ module Embeddings where
 
 import Data.List
 import SAT
-import NProgram
+import NPLib
 import Control.Monad.State
 
 class Cond c where

@@ -1,5 +1,5 @@
 {-# OPTIONS -fglasgow-exts #-}
-module NProgram
+module NPLib
     (Stateful
     ,takeSatVar
     ,takeSatVars

@@ -6,7 +6,7 @@ import Data.Ratio
 import Embeddings
 import SAT
 import NInteger
-import NProgram
+import NPLib
 import Voting hiding (beats)
 import qualified Data.Map as M
 import qualified Voting (beats)

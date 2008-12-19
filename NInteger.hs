@@ -25,7 +25,7 @@
 
 module NInteger where
 
-import NProgram
+import NPLib
 import SAT
 import Embeddings
 
