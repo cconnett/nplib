@@ -25,19 +25,22 @@ module NPLib
     )
     where
 
+import Control.Arrow
 import Control.Monad.State
 import Debug.Trace
+import Tracing
 import SAT
 import SatSolvers
 import qualified Data.IntMap as IM
 
-data NTrace = forall v d. (Interpret v d, Show d) => NTrace String v (v -> IM.IntMap Bool -> d)
+data NTrace = forall v d. (Interpret v d) => NTrace String v (d -> String)
 
 data NProgram = NProgram Formula [Var] [NTrace]
 instance Show NProgram where
     show (NProgram formula _ _) = show formula
 
 type Stateful a = State NProgram a
+type Model = IM.IntMap Bool
 
 -- Empty program has first and second variables as a reference false
 -- and true respectively.
@@ -62,10 +65,9 @@ assert formula = do
 assertAll :: [Formula] -> State NProgram ()
 assertAll = assert . conjoin
 
-ntrace tag v =  do
+ntrace tag v show =  do
   NProgram f unusedVars traces <- get
-  put $ NProgram f unusedVars ((NTrace tag v interpret):traces)
-  return ()
+  put $ NProgram f unusedVars ((NTrace tag v show):traces)
 
 -- The NVar class are types that represent complex non-deterministic
 -- structures.
@@ -134,36 +136,37 @@ instance (Interpret v ()) where
     interpret v answers = ()
                            
 -- Solving NPrograms with a SAT Solver
-solveNProgram :: (a -> IM.IntMap Bool -> b) -> SatSolver -> Stateful a -> Maybe [b]
-solveNProgram interpreter ss nprogramComputation =
+solveNProgram :: (a -> Model -> b) -> SatSolver -> Stateful a -> (Maybe Bool, [b])
+solveNProgram interpret ss nprogramComputation =
     let (theNVars, NProgram formula unusedVars traces) = runState nprogramComputation emptyNProgram
         numVars = head unusedVars - 1
-        solutions = solveAll ss (numVars, formula)
-    in case solutions of
-         Just [] -> Just [] -- error "Unsatisfiable formula"
-         Just truthMaps -> Just $ map (interpreter theNVars) $
-                           map (traceTraces traces) $
-                           truthMaps
-         Nothing -> Nothing -- error "Solve time limit exceeded"
+        results = solveAll ss (numVars, formula)
+    in case results of
+         Just []     -> (Just False, error "Unsatisfiable formula") -- Just [] -- error "Unsatisfiable formula"
+         Just models -> let tracedModels = map (traceTraces traces) models in
+                        ((if null traces then id else seq (head tracedModels)) (Just True),
+                         map (interpret theNVars) tracedModels)
+         Nothing     -> (Nothing, error "Solve time limit exceeded")
 
 traceTraces :: [NTrace] -> (IM.IntMap Bool) -> (IM.IntMap Bool)
-traceTraces traces tm =
-    trace (concatMap (\(NTrace tag v interpret) ->
-                          "NTrace: " ++ tag ++ " = " ++ show (interpret v tm) ++ "\n") traces)
-    tm
-                    
-reduceSolutions :: Maybe [b] -> (Maybe Bool, b)
-reduceSolutions Nothing = (Nothing, error "Solve time limit exceeded")
-reduceSolutions (Just []) = (Just False, error "Unsatisfiable formula")
-reduceSolutions (Just (solution:solutions)) = (Just True, solution)
+traceTraces traces model =
+    trace (concatMap (\(NTrace tag v show) ->
+                          seq model $
+                          "NTrace: " ++ tag ++ " = " ++ show (interpret v model) ++ "\n") traces)
+    model
 
-evalAllNProgram :: (Interpret a b) => SatSolver -> State NProgram a -> Maybe [b]
+--reduceModels :: Maybe [b] -> (Maybe Bool, b)
+--reduceModels Nothing = (Nothing, error "Solve time limit exceeded")
+--reduceModels (Just []) = (Just False, error "Unsatisfiable formula")
+--reduceModels (Just (model:models)) = (Just True, model)
+
+evalAllNProgram :: (Interpret a b) => SatSolver -> State NProgram a -> (Maybe Bool, [b])
 evalAllNProgram = solveNProgram interpret
 
 evalNProgram :: (Interpret a b) => SatSolver -> State NProgram a -> (Maybe Bool, b)
 evalNProgram ss nprogramComputation =
-    reduceSolutions $ evalAllNProgram ss nprogramComputation
+    (second head) $ evalAllNProgram ss nprogramComputation
 
 execNProgram :: SatSolver -> State NProgram a -> Maybe Bool
 execNProgram ss nprogramComputation =
-    fst $ reduceSolutions $ solveNProgram (const (const ())) ss nprogramComputation
+    fst $ solveNProgram (const (const ())) ss nprogramComputation
