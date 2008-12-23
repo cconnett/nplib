@@ -2,6 +2,7 @@ module ReductionComponents where
 
 import Control.Monad
 import Data.List
+import Data.Ord
 import Data.Ratio
 import Embeddings
 import SAT
@@ -9,6 +10,7 @@ import NInteger
 import NPLib
 import Voting hiding (beats)
 import qualified Data.Map as M
+import qualified Data.IntMap as IM
 import qualified Voting (beats)
 
 import Tracing
@@ -27,7 +29,17 @@ isElimination (Eliminated _ _) = True
 isElimination _ = False
 
 type Ballot = [[Var]]
-                  
+
+showPositionalBallot :: [[Bool]] -> String
+showPositionalBallot dballot =
+    let numCandidates = length dballot
+        candidates = [0 .. numCandidates-1]
+        position candidate = length . (takeWhile not) $ dballot !! candidate
+    in show $ map (+1) $ sortBy (comparing position) candidates
+
+showPairwiseBallot :: [[Bool]] -> String
+showPairwiseBallot dballot = undefined
+
 -- Non-manipulators' positional votes, directly encoded.
 nonManipulatorPositionalVotes :: [Vote Int] -> [Ballot] -> [Int] -> [Int] -> Stateful ()
 nonManipulatorPositionalVotes votes ballots candidates positions =
@@ -36,7 +48,7 @@ nonManipulatorPositionalVotes votes ballots candidates positions =
                 assertAll [(makeFalse (ballots !! voter !! candidate !! position))
                            | position <- positions, position /= correctPosition]
                | (voter, vote) <- zip [0..] votes,
-                 (candidate, correctPosition) <- (zip (map fromCandidate $ fromVote vote) positions)]
+                 (candidate, correctPosition) <- zip (map ((subtract 1) . fromCandidate) $ fromVote vote) positions]
 {-
 nonManipulatorPairwiseVotes :: [Vote (Candidate a)] -> [Ballot] -> [Int] -> Stateful ()
 nonManipulatorPairwiseVotes votes ballots candidates =
@@ -51,7 +63,7 @@ nonManipulatorPairwiseVotes votes ballots candidates =
 manipulatorPositionalPositionInjection :: [Ballot] -> [Int] -> [Int] -> Stateful ()
 manipulatorPositionalPositionInjection manipulatorBallots candidates positions =
     assert $ 
-    Formula [Clause [Not ((traceIt ballot) !! a !! position), Not (ballot !! b !! position)]
+    Formula [Clause [Not (ballot !! a !! position), Not (ballot !! b !! position)]
              | ballot <- manipulatorBallots,
                a <- candidates, b <- candidates, a /= b,
                position <- positions]
@@ -60,7 +72,7 @@ manipulatorPositionalPositionInjection manipulatorBallots candidates positions =
 manipulatorPositionalPositionSurjection :: [Ballot] -> [Int] -> [Int] -> Stateful ()
 manipulatorPositionalPositionSurjection manipulatorBallots candidates positions =
     assertAll $
-    [Formula [Clause [Merely ((traceIt ballot) !! c !! position) | position <- positions]]
+    [Formula [Clause [Merely (ballot !! c !! position) | position <- positions]]
      | ballot <- manipulatorBallots,
        c <- candidates]
 
@@ -125,9 +137,9 @@ makePositionalBallots votes candidates positions numManipulators =
       ballots <- replicateM numVoters (replicateM numCandidates (takeSatVars numPositions))
       let manipulatorBallots = drop numNonmanipulators ballots
       let nonManipulatorBallots = take numNonmanipulators ballots
-      --manipulatorPositionalPositionInjection manipulatorBallots candidates positions
-      --manipulatorPositionalPositionSurjection manipulatorBallots candidates positions
-      --nonManipulatorPositionalVotes votes nonManipulatorBallots candidates positions
+      manipulatorPositionalPositionInjection manipulatorBallots candidates positions
+      manipulatorPositionalPositionSurjection manipulatorBallots candidates positions
+      nonManipulatorPositionalVotes votes nonManipulatorBallots candidates positions
       return ballots
 {-
 makePairwiseBallots votes candidates numManipulators =
@@ -147,7 +159,7 @@ makePairwiseBallots votes candidates numManipulators =
       return ballots
 -}
 --Scoring protocol related embeddings
-getScore :: [Ballot] -> [Int] -> [Int] -> [Int] -> Int -> Stateful NInteger
+getScore :: [Ballot] -> [Int] -> [Int] -> [Int] -> Int -> Stateful NInt8
 getScore ballots voters positions scoreList candidate = do
   scores <- sequence [mul1bit (NInteger.fromInteger $ fromIntegral $ (scoreList !! position))
                                  (ballots !! voter !! candidate !! position)

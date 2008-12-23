@@ -22,7 +22,7 @@ instance Read (ManipulationProblem)  where
     readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\ncopeland\n"
 
 scoringProtocolManipulation :: (Int -> [Int]) -> ManipulationProblem
-scoringProtocolManipulation scoreFunc votes target numManipulators =
+scoringProtocolManipulation scoreFunc votes numManipulators target =
     let numNonmanipulators = length votes
         numCandidates = length $ extractCandidates votes
         candidates = [0 .. numCandidates - 1]
@@ -31,15 +31,12 @@ scoringProtocolManipulation scoreFunc votes target numManipulators =
         scoreList = scoreFunc (fromIntegral $ length candidates) in
     do
       ballots <- makePositionalBallots votes candidates positions numManipulators
+      ntrace "Ballots" ballots (concatMap showPositionalBallot)
       candidateScores <- mapM (getScore ballots voters positions scoreList) candidates
       ntrace "Candidate scores" candidateScores (show::[Integer]->String)
       sequence_ [(candidateScores !! loser) `lt` (candidateScores !! target) >>= assert
                  | loser  <- delete target candidates]
-{-
-      -- Target candidate remains, with everyone else eliminated, and therefore wins
-      assertAll $ [(if c == target then makeFalse else makeTrue) $ eliminations !! c
-                   | c <- candidates]
--}
+
 {-
 pluralityWithRunoffManipulation votes =
     let voterSet = [1..length votes]

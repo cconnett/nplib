@@ -88,7 +88,7 @@ possibleWinnersBySolver solver manipulationProblem manipulators votes =
               return ans
     in
       if manipulators > numVotes then (candidates, []) else
-          filter3 ((candidateSolver votes manipulators) . fromCandidate) candidates
+          filter3 ((candidateSolver votes manipulators) . subtract 1 . fromCandidate) candidates
 
 minimumManipulators :: (Int -> [Vote Int] -> ([Candidate a], [Candidate a])) ->
                        [Vote Int] -> ([Int], [Int])
