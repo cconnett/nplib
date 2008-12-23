@@ -1,4 +1,4 @@
-BASEFLAGS=-fglasgow-exts -fno-monomorphism-restriction -funbox-strict-fields -dcore-lint
+BASEFLAGS=-fglasgow-exts -funbox-strict-fields -dcore-lint
 #PROFILEFLAGS=-prof -auto-all
 #COVERAGEFLAGS=-fhpc
 THREADED=-threaded

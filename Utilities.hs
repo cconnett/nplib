@@ -1,4 +1,5 @@
-{-# OPTIONS -fglasgow-exts -fno-monomorphism-restriction #-}
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Utilities where
 

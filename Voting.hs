@@ -1,4 +1,5 @@
-{-# OPTIONS -fno-monomorphism-restriction -fglasgow-exts #-}
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Voting
     where

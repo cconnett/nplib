@@ -1,4 +1,6 @@
-{-# OPTIONS -fglasgow-exts -fno-monomorphism-restriction #-}
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
 module SAT where
 
 import qualified Data.IntMap as IM
