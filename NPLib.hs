@@ -27,6 +27,7 @@ module NPLib
 
 import Control.Arrow
 import Control.Monad.State
+import Data.Array.IArray
 import Debug.Trace
 import Tracing
 import SAT
@@ -132,9 +133,13 @@ instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, In
 instance (Interpret v d) => Interpret [v] [d] where
     interpret vs answers = map ((flip interpret) answers) vs
 
+instance (IArray a v, IArray a d, Ix i,
+          Interpret v d) => Interpret (a i v) (a i d) where
+    interpret vs answers = amap ((flip interpret) answers) vs
+
 instance (Interpret v ()) where
     interpret v answers = ()
-                           
+
 -- Solving NPrograms with a SAT Solver
 solveNProgram :: (a -> Model -> b) -> SatSolver -> Stateful a -> (Maybe Bool, [b])
 solveNProgram interpret ss nprogramComputation =

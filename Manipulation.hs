@@ -4,6 +4,7 @@ module Manipulation
     where
 
 import Control.Exception
+import Data.Array.IArray
 import Data.List
 import Embeddings
 import Foreign (unsafePerformIO)
@@ -72,6 +73,7 @@ possibleWinnersBySolver :: SatSolver -> ManipulationProblem -> Int -> [Vote Int]
 possibleWinnersBySolver solver manipulationProblem manipulators votes =
     let numVotes = length votes
         candidates = extractCandidates votes
+        candRange = (minimum candidates, maximum candidates)
         statefulCache = unsafePerformIO $ newMVar (M.empty)
         candidateSolver votes manipulators target =
             unsafePerformIO $ do
@@ -88,7 +90,7 @@ possibleWinnersBySolver solver manipulationProblem manipulators votes =
               return ans
     in
       if manipulators > numVotes then (candidates, []) else
-          filter3 ((candidateSolver votes manipulators) . subtract 1 . fromCandidate) candidates
+          filter3 (candidateSolver votes manipulators) candidates
 
 minimumManipulators :: (Int -> [Vote Int] -> ([Candidate a], [Candidate a])) ->
                        [Vote Int] -> ([Int], [Int])

@@ -107,3 +107,5 @@ permCache filename thunk =
 showBinaryNumWidth 0 num = ""
 showBinaryNumWidth width num =
     (if testBit num (width-1) then '1' else '0') : showBinaryNumWidth (width-1) num
+
+crossRanges a b = ((fst a, fst b), (snd a, snd b))

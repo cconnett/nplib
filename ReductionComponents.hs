@@ -1,6 +1,8 @@
 module ReductionComponents where
 
 import Control.Monad
+import Data.Array.IArray
+import Data.Ix
 import Data.List
 import Data.Ord
 import Data.Ratio
@@ -8,6 +10,7 @@ import Embeddings
 import SAT
 import NInteger
 import NPLib
+import Utilities
 import Voting hiding (beats)
 import qualified Data.Map as M
 import qualified Data.IntMap as IM
@@ -28,27 +31,31 @@ isPairwiseDatum _ = False
 isElimination (Eliminated _ _) = True
 isElimination _ = False
 
-type Ballot = [[Var]]
+newtype Position = Position Int
+    deriving (Show, Eq, Ord, Ix)
 
-showPositionalBallot :: [[Bool]] -> String
+type PositionalBallot = Array (Candidate Int, Position) Var
+
+showPositionalBallot :: Array (Candidate Int, Position) Bool -> String
 showPositionalBallot dballot =
-    let numCandidates = length dballot
-        candidates = [0 .. numCandidates-1]
-        position candidate = length . (takeWhile not) $ dballot !! candidate
-    in show $ map (+1) $ sortBy (comparing position) candidates
+    let trueAssocs = filter snd (assocs dballot)
+        candidates = sortNub $ map fst trueAssocs
+        position candidate = lookup candidate trueAssocs
+    in show $ map (fromCandidate . fst) $ sortBy (comparing position) candidates
 
 showPairwiseBallot :: [[Bool]] -> String
 showPairwiseBallot dballot = undefined
 
 -- Non-manipulators' positional votes, directly encoded.
-nonManipulatorPositionalVotes :: [Vote Int] -> [Ballot] -> [Int] -> [Int] -> Stateful ()
-nonManipulatorPositionalVotes votes ballots candidates positions =
+nonManipulatorPositionalVotes :: [Vote Int] -> [PositionalBallot] -> (Candidate Int, Candidate Int) ->
+                                 (Position, Position) -> Stateful ()
+nonManipulatorPositionalVotes votes ballots candRange posRange =
     sequence_ [do
-                assert $ makeTrue (ballots !! voter !! candidate !! correctPosition)
-                assertAll [(makeFalse (ballots !! voter !! candidate !! position))
-                           | position <- positions, position /= correctPosition]
+                assert $ makeTrue (ballots !! voter ! (candidate, correctPosition))
+                assertAll [(makeFalse (ballots !! voter ! (candidate, position)))
+                           | position <- range posRange, position /= correctPosition]
                | (voter, vote) <- zip [0..] votes,
-                 (candidate, correctPosition) <- zip (map ((subtract 1) . fromCandidate) $ fromVote vote) positions]
+                 (candidate, correctPosition) <- zip (fromVote vote) (range posRange)]
 {-
 nonManipulatorPairwiseVotes :: [Vote (Candidate a)] -> [Ballot] -> [Int] -> Stateful ()
 nonManipulatorPairwiseVotes votes ballots candidates =
@@ -60,21 +67,23 @@ nonManipulatorPairwiseVotes votes ballots candidates =
                 candidateA /= candidateB]
 -}
 -- Manipulator vote constraints (no two candidates in same position).
-manipulatorPositionalPositionInjection :: [Ballot] -> [Int] -> [Int] -> Stateful ()
-manipulatorPositionalPositionInjection manipulatorBallots candidates positions =
-    assert $ 
-    Formula [Clause [Not (ballot !! a !! position), Not (ballot !! b !! position)]
+manipulatorPositionalPositionInjection :: [PositionalBallot] -> (Candidate Int, Candidate Int) ->
+                                          (Position, Position) -> Stateful ()
+manipulatorPositionalPositionInjection manipulatorBallots candRange posRange =
+    assert $
+    Formula [Clause [Not (ballot ! (a, position)), Not (ballot ! (b, position))]
              | ballot <- manipulatorBallots,
-               a <- candidates, b <- candidates, a /= b,
-               position <- positions]
+               a <- range candRange, b <- range candRange, a /= b,
+               position <- range posRange]
 
 -- Manipulator vote constraints (every candidate in some position).
-manipulatorPositionalPositionSurjection :: [Ballot] -> [Int] -> [Int] -> Stateful ()
-manipulatorPositionalPositionSurjection manipulatorBallots candidates positions =
+manipulatorPositionalPositionSurjection :: [PositionalBallot] -> (Candidate Int, Candidate Int) ->
+                                           (Position, Position) -> Stateful ()
+manipulatorPositionalPositionSurjection manipulatorBallots candRange posRange =
     assertAll $
-    [Formula [Clause [Merely (ballot !! c !! position) | position <- positions]]
+    [Formula [Clause [Merely (ballot ! (c, position)) | position <- range posRange]]
      | ballot <- manipulatorBallots,
-       c <- candidates]
+       c <- range candRange]
 
 -- NB: that no candidate is in more than one position is implied by
 -- the previous two constraints.  (Injection + Surjection = 1-to-1)
@@ -128,18 +137,21 @@ firstPlacePoints candidates ballots rounds =
                    b <- candidates, a < b])
 -}
 
-makePositionalBallots votes candidates positions numManipulators =
-    let numCandidates = length candidates
+makePositionalBallots :: [Vote Int] -> (Candidate Int, Candidate Int) ->
+                         (Position, Position) -> Int -> Stateful [PositionalBallot]
+makePositionalBallots votes candRange posRange numManipulators =
+    let numCandidates = rangeSize candRange
         numNonmanipulators = length votes
         numVoters = numNonmanipulators + numManipulators
-        numPositions = length candidates
+        numPositions = rangeSize posRange
     in do
-      ballots <- replicateM numVoters (replicateM numCandidates (takeSatVars numPositions))
+      ballots <- replicateM numVoters (liftM (listArray (crossRanges candRange posRange)) $
+                                             takeSatVars (numCandidates*numPositions))
       let manipulatorBallots = drop numNonmanipulators ballots
       let nonManipulatorBallots = take numNonmanipulators ballots
-      manipulatorPositionalPositionInjection manipulatorBallots candidates positions
-      manipulatorPositionalPositionSurjection manipulatorBallots candidates positions
-      nonManipulatorPositionalVotes votes nonManipulatorBallots candidates positions
+      manipulatorPositionalPositionInjection manipulatorBallots candRange posRange
+      manipulatorPositionalPositionSurjection manipulatorBallots candRange posRange
+      nonManipulatorPositionalVotes votes nonManipulatorBallots candRange posRange
       return ballots
 {-
 makePairwiseBallots votes candidates numManipulators =
@@ -159,12 +171,12 @@ makePairwiseBallots votes candidates numManipulators =
       return ballots
 -}
 --Scoring protocol related embeddings
-getScore :: [Ballot] -> [Int] -> [Int] -> [Int] -> Int -> Stateful NInt8
-getScore ballots voters positions scoreList candidate = do
-  scores <- sequence [mul1bit (NInteger.fromInteger $ fromIntegral $ (scoreList !! position))
-                                 (ballots !! voter !! candidate !! position)
+getScore :: [PositionalBallot] -> [Int] -> (Position, Position) -> [Int] -> Candidate Int -> Stateful NInt8
+getScore ballots voters posRange scoreList candidate = do
+  scores <- sequence [mul1bit (NInteger.fromInteger $ fromIntegral $ (scoreList !! index posRange position))
+                              (ballots !! voter ! (candidate, position))
                      | voter <- voters,
-                       position <- positions]
+                       position <- range posRange]
   nsum scores
 
 {-

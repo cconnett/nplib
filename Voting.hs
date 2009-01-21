@@ -4,6 +4,7 @@
 module Voting
     where
 
+import Data.Ix
 import Data.List
 import Data.Maybe
 import Data.Ord
@@ -13,7 +14,7 @@ import Debug.Trace
 --Basic defitions
 
 data Candidate a = Candidate !a
-    deriving (Show, Eq, Ord, Read)
+    deriving (Show, Eq, Ord, Read, Ix)
 
 data Vote a = Vote ![Candidate a]
     deriving (Show, Eq, Ord, Read)

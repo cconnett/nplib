@@ -1,6 +1,7 @@
 module Reductions where
 
 import Control.Monad.State
+import Data.Ix
 import Data.List
 import Data.Ratio
 import Embeddings
@@ -11,7 +12,7 @@ import SAT
 import Voting hiding (beats)
 import qualified Data.Map as M
 
-type ManipulationProblem = [Vote Int] -> Int -> Int -> Stateful ()
+type ManipulationProblem = [Vote Int] -> Int -> Candidate Int -> Stateful ()
 instance Read (ManipulationProblem)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
 --    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
@@ -25,17 +26,17 @@ scoringProtocolManipulation :: (Int -> [Int]) -> ManipulationProblem
 scoringProtocolManipulation scoreFunc votes numManipulators target =
     let numNonmanipulators = length votes
         numCandidates = length $ extractCandidates votes
-        candidates = [0 .. numCandidates - 1]
-        positions = [0 .. numCandidates - 1]
-        voters = [0.. numNonmanipulators + numManipulators - 1]
-        scoreList = scoreFunc (fromIntegral $ length candidates) in
+        candRange = (Candidate 1, Candidate numCandidates)
+        posRange = (Position 1, Position numCandidates)
+        voters = [0 .. numNonmanipulators + numManipulators - 1]
+        scoreList = scoreFunc numCandidates in
     do
-      ballots <- makePositionalBallots votes candidates positions numManipulators
+      ballots <- makePositionalBallots votes candRange posRange numManipulators
       ntrace "Ballots" ballots (concatMap showPositionalBallot)
-      candidateScores <- mapM (getScore ballots voters positions scoreList) candidates
+      candidateScores <- mapM (getScore ballots voters posRange scoreList) (range candRange)
       ntrace "Candidate scores" candidateScores (show::[Integer]->String)
-      sequence_ [(candidateScores !! loser) `lt` (candidateScores !! target) >>= assert
-                 | loser  <- delete target candidates]
+      sequence_ [(candidateScores !! index candRange loser) `lt` (candidateScores !! index candRange target) >>= assert
+                 | loser  <- delete target (range candRange)]
 
 {-
 pluralityWithRunoffManipulation votes =
