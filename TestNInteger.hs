@@ -2,14 +2,12 @@
 module TestNInteger where
 
 import SatSolvers
+import NPLib
 import NInteger
 import Test.QuickCheck
-import NProgram
-import Solving
 import Data.Maybe
 import Data.Bits
 import Data.Word
-import NVar
 import Debug.Trace
 
 prop_equal ss aa bb =
@@ -90,7 +88,7 @@ prop_multiplication ss aa bb =
                                     return c)
                  )
 prop_factor ss cc =
-    let factors = (take 2 $ fromJust $
+    let factors = (take 2 $ snd $
                    evalAllNProgram ss (do
                                         a::NInt8 <- new
                                         b::NInt8 <- new

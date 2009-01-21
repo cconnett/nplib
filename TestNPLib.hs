@@ -4,12 +4,10 @@ import Control.Monad.State
 import Data.Maybe
 import Elections
 import Embeddings
+import NPLib
 import NInteger
-import NProgram
-import NVar
 import SAT
 import SatSolvers
-import Solving
 import Utilities
 import Voting hiding (beats)
 
@@ -48,6 +46,3 @@ prop_deny ss a b =
                                  eq <- a'`equal`b'
                                  deny eq)
               )
-prop_assertConjoinShow formula =
-    let (NProgram baseFormula _) = emptyNProgram in
-    (show $ execState (assert formula) emptyNProgram) == (show $ conjoin [baseFormula,formula])

@@ -44,7 +44,7 @@ newtype NInt16 = NInt16 [Var] deriving (Show, Read)
 newtype NInt32 = NInt32 [Var] deriving (Show, Read)
 newtype NInt64 = NInt64 [Var] deriving (Show, Read)
 newtype NInteger = NInteger [Var] deriving (Show, Read)
-    
+
 newtype NWord8  = NWord8  [Var] deriving (Show, Read)
 newtype NWord16 = NWord16 [Var] deriving (Show, Read)
 newtype NWord32 = NWord32 [Var] deriving (Show, Read)

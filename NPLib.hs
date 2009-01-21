@@ -170,3 +170,9 @@ evalNProgram ss nprogramComputation =
 execNProgram :: SatSolver -> State NProgram a -> Maybe Bool
 execNProgram ss nprogramComputation =
     fst $ solveNProgram (const (const ())) ss nprogramComputation
+
+{- QuickCheck Properties -}
+
+prop_assertConjoinShow formula =
+    let (NProgram baseFormula _ _) = emptyNProgram in
+    (show $ execState (assert formula) emptyNProgram) == (show $ conjoin [baseFormula,formula])
