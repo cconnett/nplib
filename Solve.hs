@@ -15,7 +15,7 @@ import System.IO
 import Voting
 
 import Utilities
-    
+
 satSolver = Minisat
 
 pullElections electionsRaw electionsList =

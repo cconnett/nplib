@@ -35,6 +35,7 @@ newtype Position = Position Int
     deriving (Show, Eq, Ord, Ix)
 
 type PositionalBallot = Array (Candidate Int, Position) Var
+type PairwiseBallot = Array (Candidate Int, Candidate Int) Var
 
 showPositionalBallot :: Array (Candidate Int, Position) Bool -> String
 showPositionalBallot dballot =
@@ -43,8 +44,10 @@ showPositionalBallot dballot =
         position candidate = lookup candidate trueAssocs
     in show $ map (fromCandidate . fst) $ sortBy (comparing position) candidates
 
-showPairwiseBallot :: [[Bool]] -> String
-showPairwiseBallot dballot = undefined
+showPairwiseBallot :: Array (Candidate Int, Candidate Int) Bool -> String
+showPairwiseBallot dballot =
+    let candidates = sortNub $ map fst $ indices dballot
+    in show $ map fromCandidate $ sortBy (\a b -> if dballot ! (a, b) then GT else LT) candidates
 
 -- Non-manipulators' positional votes, directly encoded.
 nonManipulatorPositionalVotes :: [Vote Int] -> [PositionalBallot] -> (Candidate Int, Candidate Int) ->
