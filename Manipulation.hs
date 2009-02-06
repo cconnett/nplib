@@ -55,15 +55,14 @@ manipulatorVoteRankWeights 0 slots = [replicate slots 0]
 manipulatorVoteRankWeights points 1 = [[points]]
 manipulatorVoteRankWeights points slots = concat [map (c:) (manipulatorVoteRankWeights (points-c) (slots-1)) | c <- [0..points]]
 
-manipulatorVotes :: [Candidate a] -> [Int] -> [Vote a]
+manipulatorVotes :: (Eq a) => [Candidate a] -> [Int] -> [Vote a]
 manipulatorVotes candidates rankWeights = concat $ [replicate i (Vote vote) | (i, vote) <- zip rankWeights $ map (unrank candidates) [0..(factorial $ length candidates)]]
 
-unrank :: [a] -> Int -> [a]
+unrank :: (Eq a) => [a] -> Int -> [a]
 unrank [x] _ = [x]
-unrank objects rank = (take pos rest) ++ [head objects] ++ (drop pos rest)
-    where pos = rank `div` b
-          rest = unrank (tail objects) (rank `mod` b)
-          b = (factorial $ (length objects)-1)
+unrank objects rank = x : unrank (delete x objects) (rank `mod` b)
+    where x = objects !! (rank `div` b)
+          b = factorial $ length objects - 1
 
 factorial n = product [2..n]
 
