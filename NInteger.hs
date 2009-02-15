@@ -23,7 +23,46 @@
 -- the assignments to the unknowns will be correct if interpreted as
 -- two's complement.
 
-module NInteger where
+module NInteger
+    (NInt8
+    ,NInt16
+    ,NInt32
+    ,NInt64
+
+    ,NWord8
+    ,NWord16
+    ,NWord32
+    ,NWord64
+
+    ,NInteger
+    ,newNInteger
+
+    ,NVar
+    ,toVars
+    ,fromVars
+    ,new
+
+    ,NIntegral
+    ,NInteger.fromInteger
+    ,extendTo
+    ,fromNIntegral
+
+    ,equal
+    ,notEqual
+    ,leq
+    ,lt
+
+    ,add
+    ,sub
+    ,negate
+    ,shiftL
+    ,shiftR
+    ,ashiftR
+    ,nsum
+    ,mul1bit
+    ,mul
+    )
+    where
 
 import NPLib
 import SAT

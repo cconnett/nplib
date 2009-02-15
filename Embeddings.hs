@@ -1,5 +1,16 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Embeddings where
+module Embeddings
+    (embedFormula
+    ,embedFormulas
+
+    ,Cond
+    ,if'
+
+    ,negateClause
+    ,negateFormula
+    ,deny
+    )
+    where
 
 import Data.List
 import SAT
@@ -35,6 +46,8 @@ embedFormula (Formula clauses) = do
   assert $ Formula [Clause (map Merely (s:ss))]
   return s
 
+embedFormulas = mapM embedFormula
+
 negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
 
 negateFormula formula = do
@@ -44,4 +57,3 @@ negateFormula formula = do
 deny :: Formula -> Stateful ()
 deny = (>>= assert) . negateFormula
 
-embedFormulas = mapM embedFormula
