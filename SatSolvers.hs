@@ -75,8 +75,8 @@ runAll ss (numVars, formula) = do
              (Just True, _) : _ -> Just $ map snd $ takeWhile ((==Just True) . fst) solutions
 
 runAll' ss (numVars, formula) = do
-  firstOutput <- myTrace (show numVars ++ " variables, " ++
-                                  show (length $ fromFormula formula) ++ " clauses.\n") $
+  firstOutput <- myTrace 1 (show numVars ++ " variables, " ++
+                            show (length $ fromFormula formula) ++ " clauses.\n") $
                           run1 ss (toDIMACS (numVars, formula))
   let firstSolution = parse ss firstOutput
   let restSolutions = runAll' ss (numVars, conjoin [formula, invalidateAssignment (snd firstSolution)])

@@ -2,6 +2,7 @@ module Tracing where
 
 import Debug.Trace
 
-debug = True
-myTrace = if debug then trace else flip const
-traceIt s = myTrace ("TRACEIT:" ++ show s) s
+debugLevel = 0 :: Int
+myTrace :: Int -> String -> a -> a
+myTrace level = if level <= debugLevel then trace else flip const
+traceIt s = myTrace 1 ("TRACEIT:" ++ show s) s

@@ -94,12 +94,12 @@ newNInteger  = fixedWidthNew
 
 asSignedInteger :: [Bool] -> Integer
 asSignedInteger bools =
-    let signBit = head (myTrace (concatMap (\b -> if b then "1" else "0") bools) bools)
+    let signBit = head (myTrace 3 (concatMap (\b -> if b then "1" else "0") bools) bools)
         magnitude = asUnsignedInteger (tail bools)
     in magnitude - (if signBit then Bits.bit (length bools - 1) else 0)
 
 asUnsignedInteger :: [Bool] -> Integer
-asUnsignedInteger bools = foldl (.|.) 0 (map Bits.bit $ trueIndices (myTrace (concatMap (\b -> if b then "1" else "0") bools) bools))
+asUnsignedInteger bools = foldl (.|.) 0 (map Bits.bit $ trueIndices (myTrace 4 (concatMap (\b -> if b then "1" else "0") bools) bools))
 trueIndices bools = map fst $ filter snd $ zip [0..] (reverse bools)
 
 -- NVar and Interpret instances for unsigned types
@@ -305,15 +305,15 @@ x `ashiftR` i =
   let vars = toVars x
   in fromVars . (replicate i (head vars) ++) . toVars $ x
 
-nsum :: (NIntegral k) => [k] -> Stateful k
+nsum :: (NIntegral k) => [k] -> Stateful NInteger
 nsum [] = return $ NInteger.fromInteger 0
-nsum [a] = return a
+nsum [a] = return $ fromNIntegral a
 nsum summands = do
   --sum :: NInteger <- fixedWidthNew bitsNeeded
   frontSum <- nsum frontHalf
   backSum <- nsum backHalf
   sum <- add frontSum backSum
-  return $ {-(myTrace (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf)) -}sum
+  return $ {-myTrace 3 (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf))-} sum
   where frontHalf = take half summands
         backHalf = drop half summands
         half = (length summands) `div` 2

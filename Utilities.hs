@@ -56,7 +56,7 @@ next 0 = 1
 next s = 2*s
 prev 1 = 1
 prev s = s `div` 2
-         
+
 hasIndex [] c = False
 hasIndex list 0 = True
 hasIndex list c = (tail list) `hasIndex` (c-1)
@@ -71,7 +71,7 @@ prop_FindFirstFiniteAbsent target (list::[Int]) =
 prop_FindFirstInfinite target (starting::Int) = it == Just starting || it == Just (target + 1)
     where it = findFirst (>target) [starting..]
 
-               
+
 circularZip :: [[a]] -> [a]
 circularZip [] = []
 circularZip lists = concat [concatMap (take 1) lists,

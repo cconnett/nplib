@@ -64,7 +64,7 @@ firstPlaceVotes votes candidate = length $ filter (==candidate) $ map (head.from
 
 lastPlaceVotes :: (Eq a) => [Vote a] -> Candidate a -> Int
 lastPlaceVotes votes candidate = length $ filter (==candidate) $ map (last.fromVote) votes
-                                  
+
 -- wrt removes from a vote v candidates not in s
 wrt :: (Eq a) => Vote a -> [Candidate a] -> Vote a
 wrt (Vote v) s = Vote $ filter (`elem` s) v
@@ -77,7 +77,7 @@ equating f a b = f a == f b
 topGroupBy scoreFunction =
     head . (groupBy (equating scoreFunction)) .
             (sortBy (comparing ((0-).scoreFunction)))
-                 
+
 -- Voting methods
 scoringProtocol :: (Eq a, Integral k, Real g) => (k -> [g]) -> Rule a
 scoringProtocol s candidates votes = topGroupBy score candidates

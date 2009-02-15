@@ -38,7 +38,7 @@ possibleWinnersByBruteForce rule manipulators votes
     | manipulators > length votes = (candidates, [])
     -- more manips than candidates: all candidates can be made to win!
     -- (in reasonable voting systems, assumed)
-    | otherwise = myTrace ("brute forcing: " ++ show manipulators) $
+    | otherwise = myTrace 2 ("brute forcing: " ++ show manipulators) $
                   (nub' (length candidates) $ concat $
                    map (uniqueWinner . (rule candidates) . (++votes) . (manipulatorVotes candidates)) $
                    manipulatorVoteRankWeights manipulators (factorial $ length candidates),
@@ -66,7 +66,7 @@ unrank objects rank = x : unrank (delete x objects) (rank `mod` b)
 
 factorial n = product [2..n]
 
---myTrace ("sat solving: " ++ show manipulators) $
+--myTrace 2 ("sat solving: " ++ show manipulators) $
 possibleWinnersBySolver :: SatSolver -> ManipulationProblem -> Int -> [Vote Int] ->
                           ([Candidate Int], [Candidate Int])
 possibleWinnersBySolver solver manipulationProblem manipulators votes =
