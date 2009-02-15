@@ -244,8 +244,8 @@ add a b = do
   let [a', b'] = extendToCommonWidth [a, b]
   let theWidth = length a' -- == width b' == width c'
   c <- fixedWidthNew theWidth
-  let c' = toVars c
-  let numCarryBits = theWidth - 1
+  let c' = toVars $ c `asTypeOf` a
+  let numCarryBits = theWidth
   carryBits <- takeSatVars numCarryBits
   let aBit k = Merely $ a' !! (theWidth - k - 1)
   let bBit k = Merely $ b' !! (theWidth - k - 1)
@@ -279,8 +279,8 @@ add a b = do
   assert $ conjoin $
              [set0thResult, set1stCarry,
               conjoin $ map setKthResult [1 .. theWidth - 1],
-              conjoin $ map setKthCarry [2 .. theWidth - 1]]
-  return c
+              conjoin $ map setKthCarry [2 .. theWidth]]
+  return (fromVars $ head carryBits : c')
 
 -- c == a - b <=> a == b + c
 sub a b = do
@@ -314,9 +314,10 @@ nsum summands = do
   backSum <- nsum backHalf
   sum <- add frontSum backSum
   return $ {-myTrace 3 (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf))-} sum
-  where frontHalf = take half summands
-        backHalf = drop half summands
+  where frontHalf = take half summands'
+        backHalf = drop half summands'
         half = (length summands) `div` 2
+        summands' = map fromNIntegral summands :: [NInteger]
         bitsNeeded = m $ sum $ map (\summand -> Bits.bit (width summand - 1) - 1 :: Integer) summands
 
 mul1bit :: NIntegral k => k -> Var -> Stateful k
