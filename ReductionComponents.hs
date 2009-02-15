@@ -174,9 +174,9 @@ makePairwiseBallots votes candidates numManipulators =
       return ballots
 -}
 --Scoring protocol related embeddings
-getScore :: [PositionalBallot] -> [Int] -> (Position, Position) -> [Int] -> Candidate Int -> Stateful NInt8
+getScore :: [PositionalBallot] -> [Int] -> (Position, Position) -> [Int] -> Candidate Int -> Stateful NInteger
 getScore ballots voters posRange scoreList candidate = do
-  scores <- sequence [mul1bit (NInteger.fromInteger $ fromIntegral $ (scoreList !! index posRange position))
+  scores <- sequence [mul1bit (NInteger.fromInteger $ fromIntegral $ (scoreList !! index posRange position) :: NInteger)
                               (ballots !! voter ! (candidate, position))
                      | voter <- voters,
                        position <- range posRange]
