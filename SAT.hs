@@ -16,17 +16,18 @@ import Control.Monad
 import Control.Arrow
 import Random
 import Foreign (unsafePerformIO)
-    
+
 import Debug.Trace
 
 -- Formulas are conjunctions of Clauses, Clauses are disjuntions of Propositions.
-data Formula = Formula [Clause]
-               deriving (Eq, Ord)
-                     
-data Clause = Clause [Proposition]
-              deriving (Eq, Ord)
-data Proposition = Merely !Var
-                 | Not !Var
+newtype Formula = Formula [Clause]
+    deriving (Eq, Ord)
+
+newtype Clause = Clause [Proposition]
+    deriving (Eq, Ord)
+
+data Proposition = Merely Var
+                 | Not Var
                    deriving (Eq, Ord)
 
 type Var = Int

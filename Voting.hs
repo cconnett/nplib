@@ -13,10 +13,10 @@ import Debug.Trace
 
 --Basic defitions
 
-data Candidate a = Candidate !a
+newtype Candidate a = Candidate a
     deriving (Show, Eq, Ord, Read, Ix)
 
-data Vote a = Vote ![Candidate a]
+newtype Vote a = Vote [Candidate a]
     deriving (Show, Eq, Ord, Read)
 
 -- Uniform type for voting rules: take a list of candidates, a list of
