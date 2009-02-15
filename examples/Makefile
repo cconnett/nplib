@@ -1,5 +1,5 @@
-BASEFLAGS=-fglasgow-exts -fno-monomorphism-restriction -funbox-strict-fields -dcore-lint
-#PROFILEFLAGS=-prof -auto-all
+BASEFLAGS=-fglasgow-exts -funbox-strict-fields -dcore-lint
+PROFILEFLAGS=-prof -auto-all
 #COVERAGEFLAGS=-fhpc
 THREADED=-threaded
 OPTFLAGS=-O -optc-O3 -optc-march=k8
@@ -24,3 +24,5 @@ Mul1Bit: Mul1Bit.hs
 	${GHC} ${FLAGS} --make Mul1Bit.hs -o Mul1Bit
 Multiplication: Multiplication.hs
 	${GHC} ${FLAGS} --make Multiplication.hs -o Multiplication
+NumberMind: NumberMind.hs ../NInteger.hs
+	${GHC} ${FLAGS} --make NumberMind.hs -o NumberMind
