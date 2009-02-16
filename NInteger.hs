@@ -46,6 +46,7 @@ module NInteger
     ,NInteger.fromInteger
     ,extendTo
     ,fromNIntegral
+    ,width
 
     ,equal
     ,notEqual
@@ -75,6 +76,7 @@ import Data.Bits ((.|.))
 import qualified Data.Bits as Bits
 import Data.Word
 import Data.Int
+import Test.QuickCheck
 
 import Tracing
 
@@ -140,6 +142,11 @@ asSignedInteger bools =
 asUnsignedInteger :: [Bool] -> Integer
 asUnsignedInteger bools = foldl (.|.) 0 (map Bits.bit $ trueIndices (myTrace 4 (concatMap (\b -> if b then "1" else "0") bools) bools))
 trueIndices bools = map fst $ filter snd $ zip [0..] (reverse bools)
+
+prop_asSignedInteger a =
+    a == asSignedInteger (map (Bits.testBit a) [31,30..0])
+prop_asUnsignedInteger (a::Integer) = a > 0 ==>
+    a == fromIntegral (asUnsignedInteger (map (Bits.testBit a) [31,30..0]))
 
 -- NVar and Interpret instances for unsigned types
 instance NVar NWord8 where

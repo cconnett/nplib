@@ -49,11 +49,6 @@ prop_lt ss aa bb =
                                   )
                  )
 
-prop_asSignedInteger a =
-    a == asSignedInteger (map (testBit a) [31,30..0])
-prop_asUnsignedInteger (a::Integer) = a > 0 ==>
-    a == fromIntegral (asUnsignedInteger (map (testBit a) [31,30..0]))
-
 prop_addition ss aa bb =
     (aa + bb) == (snd $
                   evalNProgram ss (do

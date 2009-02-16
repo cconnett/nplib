@@ -34,7 +34,7 @@ prop_interpretInteger ss a =
     a == (snd $
           evalNProgram ss (do
                             let a'::NInteger = NInteger.fromInteger a
-                            b'::NInteger <- fixedWidthNew (width a')
+                            b'::NInteger <- newNInteger (width a')
                             a'`equal`b' >>= assert
                             return b')
          )
