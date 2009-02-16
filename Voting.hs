@@ -9,15 +9,16 @@ import Data.List
 import Data.Maybe
 import Data.Ord
 import Data.Ratio
+import Data.Binary
 import Debug.Trace
 
 --Basic defitions
 
 newtype Candidate a = Candidate a
-    deriving (Show, Eq, Ord, Read, Ix)
+    deriving (Show, Eq, Ord, Read, Ix, Binary)
 
 newtype Vote a = Vote [Candidate a]
-    deriving (Show, Eq, Ord, Read)
+    deriving (Show, Eq, Ord, Read, Binary)
 
 -- Uniform type for voting rules: take a list of candidates, a list of
 -- votes, and selects a candidate from the list of candidates as the
