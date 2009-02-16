@@ -4,13 +4,18 @@ module Elections
     where
 
 import Voting
-import Data.List
+
+import Control.Monad
+import Data.Binary
 import Data.Graph.Inductive
+import Data.List
+import Data.Ord
+import IO
 import Maybe
 import Test.QuickCheck
-import IO
-import Control.Monad
-import Data.Ord
+
+import qualified Data.ByteString.Lazy as B
+import System.FilePath
 
 distributions = ["uniform", "condorcet p", "spatial d"]
 
@@ -69,3 +74,8 @@ spatialVote issues candidatePositions candidates = do
 
 readElections :: String -> IO [[Vote Int]]
 readElections filename = liftM read $ readFile filename
+
+convertElections filename = do
+  es <- readElections filename
+  let newFilename = filename `replaceDirectory` "/home/chris/schoolwork/thesis/binElections"
+  B.writeFile newFilename (encode es)
