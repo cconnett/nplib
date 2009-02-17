@@ -46,8 +46,7 @@ type Model = IM.IntMap Bool
 -- Empty program has first and second variables as a reference false
 -- and true respectively.
 emptyNProgram :: NProgram
-emptyNProgram = NProgram (formulaFromClauses [clauseFromPropositions [Not 1],
-                                              clauseFromPropositions [Merely 2]]) [3..] []
+emptyNProgram = NProgram (fromListForm [[Not 1], [Merely 2]]) [3..] []
 
 false = 1 :: Var
 true = 2 :: Var

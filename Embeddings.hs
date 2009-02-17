@@ -43,9 +43,9 @@ embedFormula' [[Not v]] = do
   return s
 embedFormula' clauses = do
   s <- takeSatVar
-  assert $ formulaFromClauses [clauseFromPropositions $ Not s:clause | clause <- clauses]
+  assert $ fromListForm [Not s:clause | clause <- clauses]
   ss <- mapM embedFormula (map negateClause clauses)
-  assert $ formulaFromClauses [clauseFromPropositions $ map Merely (s:ss)]
+  assert $ fromListForm [map Merely (s:ss)]
   return s
 
 embedFormulas = mapM embedFormula

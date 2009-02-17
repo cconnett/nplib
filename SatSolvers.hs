@@ -72,12 +72,11 @@ runAll' ss (numVars, formula) = do
   return $ firstSolution : (unsafePerformIO restSolutions)
 
 invalidateModel :: (IM.IntMap Bool) -> Formula
-invalidateModel model =
-    formulaFromClause $
-    clauseFromPropositions [if assignedTrue then
-                          Not var else
-                          Merely var
-                      | (var, assignedTrue) <- IM.toList model]
+invalidateModel model = fromListForm
+ [[if assignedTrue then
+       Not var else
+       Merely var
+   | (var, assignedTrue) <- IM.toList model]]
 
 zchaffRun1 dimacs = do
   (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"
