@@ -1,6 +1,11 @@
 {-# OPTIONS -fno-cse #-}
 
-module SatSolvers where
+module SatSolvers
+    (solveAll
+     ,parse
+     ,SatSolver(ZChaff,RSat,Minisat)
+    )
+    where
 
 import SAT
 
@@ -41,22 +46,6 @@ instance Arbitrary SatSolver where
     arbitrary = elements [ZChaff, RSat, Minisat]
     coarbitrary = undefined
 
--- Conversion of Problem instances to DIMACS (CNF-SAT) formats.
-toDIMACS :: (Int, Formula) -> String
-toDIMACS (numVars, formula) =
-    let cnf = toCNF formula
-        numClauses = length $ fromFormula formula
-    in ("p cnf " ++
-        (show numVars) ++ " " ++
-        (show numClauses) ++ "\n") ++
-       (unlines $ map (unwords . (map show) . (++[0])) cnf)
-
-toCNF :: Formula -> [[Int]]
-toCNF (Formula clauses) = [map transformProposition $ fromClause clause
-                     | clause <- clauses]
-        where transformProposition p =
-                  (if isNeg p then negate else id) $ propositionVar p
-
 run1 :: SatSolver -> String -> IO (String, String)
 run1 ZChaff = zchaffRun1
 run1 RSat = rsatRun1
@@ -76,17 +65,19 @@ runAll ss (numVars, formula) = do
 
 runAll' ss (numVars, formula) = do
   firstOutput <- myTrace 1 (show numVars ++ " variables, " ++
-                            show (length $ fromFormula formula) ++ " clauses.\n") $
+                            show (SAT.numClauses formula) ++ " clauses.\n") $
                           run1 ss (toDIMACS (numVars, formula))
   let firstSolution = parse ss firstOutput
-  let restSolutions = runAll' ss (numVars, conjoin [formula, invalidateAssignment (snd firstSolution)])
+  let restSolutions = runAll' ss (numVars, conjoin formula (invalidateModel (snd firstSolution)))
   return $ firstSolution : (unsafePerformIO restSolutions)
 
-invalidateAssignment assignment =
-      Formula [Clause [if assignedTrue then
-                           Not var else
-                           Merely var
-                       | (var, assignedTrue) <- IM.toList assignment]]
+invalidateModel :: (IM.IntMap Bool) -> Formula
+invalidateModel model =
+    formulaFromClause $
+    clauseFromPropositions [if assignedTrue then
+                          Not var else
+                          Merely var
+                      | (var, assignedTrue) <- IM.toList model]
 
 zchaffRun1 dimacs = do
   (tmpname, handle) <- openTempFile "/tmp/" "sat.cnf"
@@ -185,7 +176,7 @@ minisatRealRun dimacsName stdoutName solutionName = do
     ExitFailure n -> if n `elem` [2,10,20,158] then
                         return () else
                         error ("Minisat failure: " ++ show status)
-         
+
 -- Parse the output of minisat into answers about the formula.
 minisatParse :: (String, String) -> (Maybe Bool, IM.IntMap Bool)
 minisatParse (stdout, assignmentFile) =

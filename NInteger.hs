@@ -62,6 +62,9 @@ module NInteger
     ,nsum
     ,mul1bit
     ,mul
+
+    ,prop_asSignedInteger
+    ,prop_asUnsignedInteger
     )
     where
 
@@ -130,7 +133,7 @@ instance (Integral i) => Interpret NInteger i where
 fixedWidthNew width = do
   vars <- takeSatVars width
   return $ fromVars vars
-newNInteger :: Int -> Stateful NInteger
+newNInteger :: Int -> NProgramComputation NInteger
 newNInteger  = fixedWidthNew
 
 asSignedInteger :: [Bool] -> Integer
@@ -261,31 +264,32 @@ extendToCommonWidth as =
     let commonWidth = maximum $ map width as
     in map (extendTo commonWidth) as
 
-equal, notEqual, leq, lt :: (NIntegral k) => k -> k -> Stateful Formula
+equal, notEqual, leq, lt :: (NIntegral k) => k -> k -> NProgramComputation Formula
 a `equal` b =
     let [a', b'] = extendToCommonWidth [a, b] in
-    return $ conjoin $ map (uncurry makeEquivalent) (zip a' b')
+    return $ conjoinAll $ map (uncurry makeEquivalent) (zip a' b')
 
 a `leq` b = do
   let aBits = tail $ toVars a
   let bBits = tail $ toVars b
   let aSign = head $ toVars a
   let bSign = head $ toVars b
-  correctingTerms <- embedFormulas [(Formula [Clause [Not aj], Clause [Merely bj]])
-                                       | (aj, bj) <- zip aBits bBits]
+  correctingTerms <- embedFormulas [fromListForm [[Not aj], [Merely bj]]
+                                        | (aj, bj) <- zip aBits bBits]
   return $ --trace (show (aSign, aBits, bSign, bBits)) $
-   conjoin $ Formula [Clause [Merely aSign, Not bSign]] :
-     [Formula [Clause $ [Merely aSign, Merely bSign, Not ak, Merely bk] ++ map Merely (take k' correctingTerms),
-               Clause $ [Not aSign, Not bSign, Not ak, Merely bk] ++ map Merely (take k' correctingTerms)]
-     | (k', ak, bk) <- zip3 [0..] aBits bBits]
+            fromListForm $ concat $
+             [[Merely aSign, Not bSign]] :
+            [[[Merely aSign, Merely bSign, Not ak, Merely bk] ++ map Merely (take k' correctingTerms),
+              [Not aSign, Not bSign, Not ak, Merely bk] ++ map Merely (take k' correctingTerms)]
+             | (k', ak, bk) <- zip3 [0..] aBits bBits]
 
 a `notEqual` b = equal a b >>= negateFormula
 a `lt` b = do
   leq' <- a `leq` b
   neq' <- a `notEqual` b
-  return $ conjoin [leq', neq']
+  return $ conjoin leq' neq'
 
-add :: NIntegral k => k -> k -> Stateful k
+add :: NIntegral k => k -> k -> NProgramComputation k
 add a b = do
   let [a', b'] = extendToCommonWidth [a, b]
   let theWidth = length a' -- == width b' == width c'
@@ -297,16 +301,16 @@ add a b = do
   let bBit k = Merely $ b' !! (theWidth - k - 1)
   let cBit k = Merely $ c' !! (theWidth - k - 1)
   let carryBit k = Merely $ carryBits !! (numCarryBits - k)
-  let set0thResult = Formula $ map Clause $
+  let set0thResult = fromListForm
        [[      cBit 0,       aBit 0, neg $ bBit 0],
         [      cBit 0, neg $ aBit 0,       bBit 0],
         [neg $ cBit 0, neg $ aBit 0, neg $ bBit 0],
         [neg $ cBit 0,       aBit 0,       bBit 0]]
-  let set1stCarry = Formula $ map Clause $
+  let set1stCarry = fromListForm
        [[      carryBit 1, neg $ aBit 0, neg $ bBit 0],
         [neg $ carryBit 1,       aBit 0              ],
         [neg $ carryBit 1,                     bBit 0]]
-  let setKthResult k = Formula $ map Clause $
+  let setKthResult k = fromListForm
        [[      cBit k, neg $ aBit k,       bBit k,       carryBit k],
         [      cBit k, neg $ aBit k, neg $ bBit k, neg $ carryBit k],
         [      cBit k,       aBit k, neg $ bBit k,       carryBit k],
@@ -315,17 +319,16 @@ add a b = do
         [neg $ cBit k,       aBit k, neg $ bBit k, neg $ carryBit k],
         [neg $ cBit k, neg $ aBit k, neg $ bBit k,       carryBit k],
         [neg $ cBit k, neg $ aBit k,       bBit k, neg $ carryBit k]]
-  let setKthCarry k = Formula $ map Clause $
+  let setKthCarry k = fromListForm
        [[      carryBit k, neg $ aBit (k-1), neg $ bBit (k-1)                      ],
         [      carryBit k, neg $ aBit (k-1),                   neg $ carryBit (k-1)],
         [      carryBit k,                   neg $ bBit (k-1), neg $ carryBit (k-1)],
         [neg $ carryBit k,       aBit (k-1),       bBit (k-1)                      ],
         [neg $ carryBit k,       aBit (k-1),                         carryBit (k-1)],
         [neg $ carryBit k,                         bBit (k-1),       carryBit (k-1)]]
-  assert $ conjoin $
-             [set0thResult, set1stCarry,
-              conjoin $ map setKthResult [1 .. theWidth - 1],
-              conjoin $ map setKthCarry [2 .. theWidth]]
+  assertAll (set0thResult : set1stCarry :
+             map setKthResult [1 .. theWidth - 1] ++
+             map setKthCarry [2 .. theWidth])
   return (fromVars $ head carryBits : c')
 
 -- c == a - b <=> a == b + c
@@ -335,7 +338,7 @@ sub a b = do
   equal a a' >>= assert
   return c
 -- Take the two's complement of x
-negate :: forall k. (NIntegral k) => k -> Stateful k
+negate :: forall k. (NIntegral k) => k -> NProgramComputation k
 negate x = do
   (onesComplementX::k) <- new
   forM_ (zip (toVars x) (toVars onesComplementX)) $ \(v, ocv) ->
@@ -351,7 +354,7 @@ x `ashiftR` i =
   let vars = toVars x
   in fromVars . (replicate i (head vars) ++) . toVars $ x
 
-nsum :: (NIntegral k) => [k] -> Stateful NInteger
+nsum :: (NIntegral k) => [k] -> NProgramComputation NInteger
 nsum [] = return $ NInteger.fromInteger 0
 nsum [a] = return $ fromNIntegral a
 nsum summands = do
@@ -366,16 +369,16 @@ nsum summands = do
         summands' = map fromNIntegral summands :: [NInteger]
         bitsNeeded = m $ sum $ map (\summand -> Bits.bit (width summand - 1) - 1 :: Integer) summands
 
-mul1bit :: NIntegral k => k -> Var -> Stateful k
+mul1bit :: NIntegral k => k -> Var -> NProgramComputation k
 mul1bit a bit = do
   outVars <- takeSatVars (width a)
   forM_ (zip (toVars a) outVars) $ \(ai, oi) ->
-      assert $ Formula [Clause [Not ai, Not bit, Merely oi],
-                        Clause [Not oi, Merely ai],
-                        Clause [Not oi, Merely bit]]
+      assert $ fromListForm [[Not ai, Not bit, Merely oi],
+                             [Not oi, Merely ai],
+                             [Not oi, Merely bit]]
   return (fromVars outVars)
 
-mul :: (NIntegral k) => k -> k -> Stateful k
+mul :: (NIntegral k) => k -> k -> NProgramComputation k
 mul a b = do
   partialProducts :: [NInteger] <- liftM (map fromNIntegral) $ mapM (mul1bit a) (reverse $ toVars b)
   result <- nsum $ map (uncurry shiftL) $ zip partialProducts [0..]

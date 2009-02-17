@@ -1,6 +1,6 @@
 {-# OPTIONS -fglasgow-exts #-}
 module NPLib
-    (Stateful
+    (NProgramComputation
     ,takeSatVar
     ,takeSatVars
     ,assert
@@ -40,18 +40,19 @@ data NProgram = NProgram Formula [Var] [NTrace]
 instance Show NProgram where
     show (NProgram formula _ _) = show formula
 
-type Stateful a = State NProgram a
+type NProgramComputation a = State NProgram a
 type Model = IM.IntMap Bool
 
 -- Empty program has first and second variables as a reference false
 -- and true respectively.
 emptyNProgram :: NProgram
-emptyNProgram = NProgram (Formula [Clause [Not 1], Clause [Merely 2]]) [3..] []
+emptyNProgram = NProgram (formulaFromClauses [clauseFromPropositions [Not 1],
+                                              clauseFromPropositions [Merely 2]]) [3..] []
 
 false = 1 :: Var
 true = 2 :: Var
 
-takeSatVar :: State NProgram Var
+takeSatVar :: NProgramComputation Var
 takeSatVar = do
   NProgram formula unusedVars traces <- get
   put $ NProgram formula (tail unusedVars) traces
@@ -59,12 +60,12 @@ takeSatVar = do
 
 takeSatVars n = replicateM n takeSatVar
 
-assert :: Formula -> State NProgram ()
+assert :: Formula -> NProgramComputation ()
 assert formula = do
   NProgram f unusedVars traces <- get
-  put $ NProgram (conjoin [f, formula]) unusedVars traces
-assertAll :: [Formula] -> State NProgram ()
-assertAll = assert . conjoin
+  put $ NProgram (conjoin f formula) unusedVars traces
+assertAll :: [Formula] -> NProgramComputation ()
+assertAll = assert . conjoinAll
 
 ntrace tag v show =  do
   NProgram f unusedVars traces <- get
@@ -78,7 +79,7 @@ class NVar v where
     fromVars :: [Var] -> v
 
     -- Statefully allocate new variables
-    new :: Stateful v
+    new :: NProgramComputation v
 
 -- The Interpret class allows the interpretation of a (usually) NVar
 -- type into a related deterministic type, given an IntMap Bool of the
@@ -141,7 +142,7 @@ instance (Interpret v ()) where
     interpret v answers = ()
 
 -- Solving NPrograms with a SAT Solver
-solveNProgram :: (a -> Model -> b) -> SatSolver -> Stateful a -> (Maybe Bool, [b])
+solveNProgram :: (a -> Model -> b) -> SatSolver -> NProgramComputation a -> (Maybe Bool, [b])
 solveNProgram interpret ss nprogramComputation =
     let (theNVars, NProgram formula unusedVars traces) = runState nprogramComputation emptyNProgram
         numVars = head unusedVars - 1
@@ -166,14 +167,14 @@ traceTraces traces model =
 --reduceModels (Just []) = (Just False, error "Unsatisfiable formula")
 --reduceModels (Just (model:models)) = (Just True, model)
 
-evalAllNProgram :: (Interpret a b) => SatSolver -> State NProgram a -> (Maybe Bool, [b])
+evalAllNProgram :: (Interpret a b) => SatSolver -> NProgramComputation a -> (Maybe Bool, [b])
 evalAllNProgram = solveNProgram interpret
 
-evalNProgram :: (Interpret a b) => SatSolver -> State NProgram a -> (Maybe Bool, b)
+evalNProgram :: (Interpret a b) => SatSolver -> NProgramComputation a -> (Maybe Bool, b)
 evalNProgram ss nprogramComputation =
     (second head) $ evalAllNProgram ss nprogramComputation
 
-execNProgram :: SatSolver -> State NProgram a -> Maybe Bool
+execNProgram :: SatSolver -> NProgramComputation a -> Maybe Bool
 execNProgram ss nprogramComputation =
     fst $ solveNProgram (const (const ())) ss nprogramComputation
 
@@ -181,4 +182,4 @@ execNProgram ss nprogramComputation =
 
 prop_assertConjoinShow formula =
     let (NProgram baseFormula _ _) = emptyNProgram in
-    (show $ execState (assert formula) emptyNProgram) == (show $ conjoin [baseFormula,formula])
+    (show $ execState (assert formula) emptyNProgram) == (show $ conjoin baseFormula formula)

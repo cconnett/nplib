@@ -4,6 +4,7 @@ module Embeddings
     ,embedFormulas
 
     ,Cond
+    ,condify
     ,if'
 
     ,negateClause
@@ -18,13 +19,13 @@ import NPLib
 import Control.Monad.State
 
 class Cond c where
-    condify :: c -> Stateful Var
+    condify :: c -> NProgramComputation Var
 instance Cond Var where
     condify = return
 instance Cond Formula where
     condify = embedFormula
 
-if' :: (Cond c1, Cond c2, Cond c3) => c1 -> c2 -> c3 -> Stateful ()
+if' :: (Cond c1, Cond c2, Cond c3) => c1 -> c2 -> c3 -> NProgramComputation ()
 if' cond then' else' = do
   condVar <- condify cond
   thenVar <- condify then'
@@ -32,28 +33,29 @@ if' cond then' else' = do
   assert $ makeEquivalent condVar thenVar
   assert $ makeOpposed condVar elseVar
 
-embedFormula :: Formula -> Stateful Var
-embedFormula (Formula []) = takeSatVar
-embedFormula (Formula [Clause [Merely v]]) = return v
-embedFormula (Formula [Clause [Not v]]) = do
+embedFormula :: Formula -> NProgramComputation Var
+embedFormula = embedFormula' . toListForm
+embedFormula' []= takeSatVar
+embedFormula' [[Merely v]] = return v
+embedFormula' [[Not v]] = do
   s <- takeSatVar
   assert $ makeOpposed v s
   return s
-embedFormula (Formula clauses) = do
+embedFormula' clauses = do
   s <- takeSatVar
-  assert $ Formula [(Clause $ Not s:(fromClause clause)) | clause <- clauses]
+  assert $ formulaFromClauses [clauseFromPropositions $ Not s:clause | clause <- clauses]
   ss <- mapM embedFormula (map negateClause clauses)
-  assert $ Formula [Clause (map Merely (s:ss))]
+  assert $ formulaFromClauses [clauseFromPropositions $ map Merely (s:ss)]
   return s
 
 embedFormulas = mapM embedFormula
 
-negateClause (Clause c) = Formula [Clause [neg p] | p <- c]
+negateClause props = fromListForm [[neg prop] | prop <- props]
 
 negateFormula formula = do
   surrogate <- embedFormula formula
-  return $ Formula [Clause [Not surrogate]]
+  return $ makeFalse surrogate
 
-deny :: Formula -> Stateful ()
+deny :: Formula -> NProgramComputation ()
 deny = (>>= assert) . negateFormula
 

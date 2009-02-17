@@ -12,7 +12,7 @@ import SAT
 import Voting hiding (beats)
 import qualified Data.Map as M
 
-type ManipulationProblem = [Vote Int] -> Int -> Candidate Int -> Stateful ()
+type ManipulationProblem = [Vote Int] -> Int -> Candidate Int -> NProgramComputation ()
 instance Read (ManipulationProblem)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
 --    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
