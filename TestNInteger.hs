@@ -14,16 +14,16 @@ import Debug.Trace
 prop_equal ss aa bb =
     (aa == bb) == (fromJust $
                    execNProgram ss (do
-                                     let a::NInt8 = NInteger.fromInteger aa
-                                     let b::NInt8 = NInteger.fromInteger bb
+                                     let a::NInt32 = NInteger.fromInteger aa
+                                     let b::NInt32 = NInteger.fromInteger bb
                                      a `equal` b >>= assert
                                           )
                   )
 prop_notEqual ss aa bb =
     (aa /= bb) == (fromJust $
                    execNProgram ss (do
-                                     let a::NInt8 = NInteger.fromInteger aa
-                                     let b::NInt8 = NInteger.fromInteger bb
+                                     let a::NInt64 = NInteger.fromInteger aa
+                                     let b::NInt64 = NInteger.fromInteger bb
                                      a `notEqual` b >>= assert
                                           )
                   )
@@ -33,8 +33,8 @@ prop_leq ss aa bb =
     classify (aa > bb) "a > b" $
     (aa <= bb) == (fromJust $
                    execNProgram ss (do
-                                     let a::NInt8 = NInteger.fromInteger aa
-                                     let b::NInt8 = NInteger.fromInteger bb
+                                     let a::NInteger = NInteger.fromInteger aa
+                                     let b::NInteger = NInteger.fromInteger bb
                                      a `leq` b >>= assert
                                           )
                   )
@@ -44,8 +44,8 @@ prop_lt ss aa bb =
     classify (aa > bb) "a > b" $
     (aa < bb) == (fromJust $
                   execNProgram ss (do
-                                    let a::NInt8 = NInteger.fromInteger aa
-                                    let b::NInt8 = NInteger.fromInteger bb
+                                    let a::NInt16 = NInteger.fromInteger aa
+                                    let b::NInt16 = NInteger.fromInteger bb
                                     a `lt` b >>= assert
                                   )
                  )
