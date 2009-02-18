@@ -2,6 +2,7 @@
 module TestNInteger where
 
 import SatSolvers
+import SAT
 import NPLib
 import NInteger
 import Test.QuickCheck
@@ -65,6 +66,14 @@ prop_subtraction ss aa bb =
                                     c <- sub a b
                                     return c)
                  )
+prop_add_1bit ss listOfBool =
+    (length $ filter id listOfBool) == (snd $ evalNProgram ss (add_1bit_prog listOfBool))
+add_1bit_prog :: [Bool] -> NProgramComputation NInteger
+add_1bit_prog listOfBool = do
+  let x = [if bool then true else false
+               | bool <- listOfBool]
+  t <- nsum x
+  return t
 prop_negation ss aa =
     aa == (snd $
            evalNProgram ss (do

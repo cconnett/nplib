@@ -184,7 +184,7 @@ instance (Integral i) => Interpret NWord64 i where
 class (NVar k) => NIntegral k where
     fromInteger :: Integer -> k
     extendTo :: Int -> k -> [Var]
-    fromNIntegral :: (NIntegral j) => j -> k
+    fromNIntegral :: (NIntegral j) => k -> j
     fromNIntegral = fromVars . toVars
 
 
@@ -241,6 +241,9 @@ instance NIntegral NInteger where
 instance NIntegral Var where
     fromInteger = fixedWidthFromInteger 1
     extendTo numBits = (extendToStyle logicalStyle numBits) . toVars
+    -- fromNIntegral could produce a signed type, so we need to add a
+    -- leading false bit so that a True Var becomes +1, not -1.
+    fromNIntegral var = fromVars [false, var]
 instance NIntegral NWord8 where
     fromInteger = fixedWidthFromInteger 8
     extendTo numBits = (extendToStyle logicalStyle numBits) . toVars
@@ -355,18 +358,18 @@ x `ashiftR` i =
   in fromVars . (replicate i (head vars) ++) . toVars $ x
 
 nsum :: (NIntegral k) => [k] -> NProgramComputation NInteger
-nsum [] = return $ NInteger.fromInteger 0
-nsum [a] = return $ fromNIntegral a
-nsum summands = do
+nsum summands = nsum' (map fromNIntegral summands :: [NInteger])
+nsum' [] = return $ NInteger.fromInteger 0
+nsum' [a] = return $ fromNIntegral a
+nsum' summands = do
   --sum :: NInteger <- fixedWidthNew bitsNeeded
   frontSum <- nsum frontHalf
   backSum <- nsum backHalf
   sum <- add frontSum backSum
   return $ {-myTrace 3 (show $ (length $ toVars sum, map (length . toVars) frontHalf, map (length . toVars) backHalf))-} sum
-  where frontHalf = take half summands'
-        backHalf = drop half summands'
+  where frontHalf = take half summands
+        backHalf = drop half summands
         half = (length summands) `div` 2
-        summands' = map fromNIntegral summands :: [NInteger]
         bitsNeeded = m $ sum $ map (\summand -> Bits.bit (width summand - 1) - 1 :: Integer) summands
 
 mul1bit :: NIntegral k => k -> Var -> NProgramComputation k
