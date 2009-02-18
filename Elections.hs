@@ -72,7 +72,7 @@ spatialVote issues candidatePositions candidates = do
       positionMap              = zip candidates candidatePositions
   return $ Vote $ sortBy (comparing (distance voter)) candidates
 
-readElections :: String -> IO [[Vote Int]]
+readElections :: FilePath -> IO [[Vote Int]]
 --readElections filename = liftM read $ readFile filename
 readElections filename = liftM decode $ B.readFile filename
 

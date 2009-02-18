@@ -11,9 +11,8 @@ main = do
      else do
        let electionsFilename = (args !! 0) :: String
            electionNo = read (args !! 1) :: Int
-       electionsData <- readFile electionsFilename
-       let elections = (read $ electionsData) :: [[Vote Int]]
-           candidates = extractCandidates (head elections)
+       elections <- readElections electionsFilename
+       let candidates = extractCandidates (head elections)
        mapM (\candidate -> putStrLn $ show $ scoringProtocolScore bordaS candidates (elections !! (electionNo - 1)) (Candidate candidate)) [1..length candidates]
        putStr $ unlines $
               map (\group -> show (length group) ++ ": " ++ head group) $ group $ sort $
