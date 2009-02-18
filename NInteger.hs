@@ -273,10 +273,11 @@ a `equal` b =
     return $ conjoinAll $ map (uncurry makeEquivalent) (zip a' b')
 
 a `leq` b = do
-  let aBits = tail $ toVars a
-  let bBits = tail $ toVars b
-  let aSign = head $ toVars a
-  let bSign = head $ toVars b
+  let [a', b'] = extendToCommonWidth [a, b]
+  let aBits = tail a'
+  let bBits = tail b'
+  let aSign = head a'
+  let bSign = head b'
   correctingTerms <- embedFormulas [fromListForm [[Not aj], [Merely bj]]
                                         | (aj, bj) <- zip aBits bBits]
   return $ --trace (show (aSign, aBits, bSign, bBits)) $
