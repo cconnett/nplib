@@ -126,7 +126,7 @@ instance (Integral i) => Interpret NInt64 i where
 instance NVar NInteger where
     toVars (NInteger vars) = vars
     fromVars = NInteger
-    new = fixedWidthNew 1
+    new = error "Use newNInteger to create an NInteger with a specific width"
 instance (Integral i) => Interpret NInteger i where
     interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
