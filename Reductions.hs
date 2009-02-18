@@ -1,6 +1,7 @@
 module Reductions where
 
 import Control.Monad.State
+import Data.Array
 import Data.Ix
 import Data.List
 import Data.Ratio
@@ -11,11 +12,12 @@ import ReductionComponents
 import SAT
 import Voting hiding (beats)
 import qualified Data.Map as M
+import Tracing
 
 type ManipulationProblem = [Vote Int] -> Int -> Candidate Int -> NProgramComputation ()
 instance Read (ManipulationProblem)  where
     readsPrec _ "plurality" = [(scoringProtocolManipulation (\n -> 1:(repeat 0)), "")]
---    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
+    readsPrec _ "pluralityWithRunoff" = [(pluralityWithRunoffManipulation, "")]
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
 --    readsPrec _ "irv" = [(irvManipulation, "")]
@@ -32,63 +34,59 @@ scoringProtocolManipulation scoreFunc votes numManipulators target =
         scoreList = scoreFunc numCandidates in
     do
       ballots <- makePositionalBallots votes candRange posRange numManipulators
-      ntrace "Ballots" ballots (concatMap showPositionalBallot)
+      --ntrace "Ballots" ballots (concatMap showPositionalBallot)
       candidateScores <- mapM (getScore ballots voters posRange scoreList) (range candRange)
-      ntrace "Candidate scores" candidateScores (show::[Integer]->String)
+      --ntrace "Candidate scores" candidateScores (show::[Integer]->String)
       sequence_ [(candidateScores !! index candRange loser) `lt` (candidateScores !! index candRange target) >>= assert
                  | loser  <- delete target (range candRange)]
 
-{-
-pluralityWithRunoffManipulation votes =
-    let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..length votes + 1]
-        ballots = voterSet ++ manipulatorSet
-        candidates = extractCandidates votes
+pluralityWithRunoffManipulation :: ManipulationProblem
+pluralityWithRunoffManipulation votes numManipulators target =
+    let numNonmanipulators = length votes
+        candidates = sort $ extractCandidates votes
+        candRange = (head candidates, last candidates)
+        numCandidates = length candidates
         rounds = [0,1,2] in
-    let point' = point candidates
-        points' = points candidates in
-    (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
-             manipulatorPairwiseBeatsTotal manipulatorSet candidates,
-             eliminationBasics candidates rounds,
-             firstPlacePoints candidates ballots rounds] ++
-     -- Elimination: The candidates who advance are exactly those who
-     -- have at least |C| - 2 victories
-     concat
-     [let cAdvancesTag = (show c ++ " advances to round 1")
-          ineqNumber = fromIntegral $ hash cAdvancesTag in
-      victories candidates ballots 0 c $ \cVictories ->
-      embedProblem cAdvancesTag
-       (trans ineqNumber $ Inequality ([(-1, propositionToProblem vic) | vic <- cVictories], -(length candidates - 2))) $ \cAdvances ->
-      [equivalent cAdvances (neg $ Merely $ Eliminated 1 c)]
-          | c <- candidates] ++
-     -- Second stage elimination: can be tolerant of ties in
-     -- elimination, because of requirement that all others be
-     -- eliminated.
-     concat
-     [let cAdvancesTag = (show c ++ " advances to round 2") in
-      losses candidates ballots 1 c $ \cLosses ->
-      let ineqNumber = fromIntegral $ hash cAdvancesTag in
-      embedFormula cAdvancesTag (Formula [Clause [neg loss] | loss <- cLosses]) $ \cAdvances ->
-      [equivalent cAdvances (neg $ Merely $ Eliminated 2 c)]
-          | c <- candidates]
-    , \votes manipulators target ->
-        count ballots (length votes + manipulators) ++
-        nonManipulatorPairwiseVotes votes voterSet candidates ++
-     -- Target candidate still remains in round 2, with everyone else eliminated, and therefore wins.
-        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 2 c]
-                      | c <- candidates]]
-    )
+    do
+      ballots <- makePairwiseBallots votes candRange numManipulators
+      eliminations <- makeEliminations rounds candidates
+      ntrace "EliminationData" eliminations $ myTrace 0 (unwords [show numManipulators, show target]) showEliminationData
+      manipulatorPairwiseBeatsASAR (drop numNonmanipulators ballots) candidates
+      manipulatorPairwiseBeatsTotal (drop numNonmanipulators ballots) candidates
+      firstPlacePoints candidates eliminations ballots rounds
 
+      -- First round elimination: The candidates who advance are
+      -- exactly those who have at least |C| - 2 victories
+      forM_ candidates $ \c -> do
+        victories <- victories candidates ballots eliminations 0 c
+        numVictories <- nsum victories
+        ntrace ("First round victories, candidate " ++ show c) numVictories (show::Integer->String)
+        advances <- (NInteger.fromInteger $ fromIntegral $ numCandidates - 2) `leq` numVictories >>= embedFormula
+        assert $ makeOpposed advances (eliminations ! (1, c))
+
+      -- Second stage elimination: Candidates who lose even once are
+      -- out.  We can be tolerant of ties here, because for a
+      -- candidate to be a unique winner requires that all others be
+      -- eliminated.
+      forM_ candidates $ \c -> do
+        losses <- losses candidates ballots eliminations 1 c
+        advances <- embedFormula $ fromListForm [map Not losses]
+        assert $ makeOpposed advances (eliminations ! (2, c))
+      -- Target candidate still remains in round 2, with everyone else
+      -- eliminated, and therefore wins.
+      forM_ candidates $ \c -> do
+        assert $ fromListForm [[(if c == target then neg else id) $
+                                Merely $ eliminations ! (2, c)]]
+
+{-
 irvManipulation votes =
     let voterSet = [1..length votes]
         manipulatorSet = map (+length votes) [1..length votes + 1]
         ballots = voterSet ++ manipulatorSet
         candidates = extractCandidates votes
         positions = [0..length candidates - 1]
-        rounds = [0..length candidates - 1] in
-    let beats' = beats candidates ballots
-        point' = point candidates
-        points' = points candidates in
+        rounds = [0..length candidates - 1]
+        beats' = beats candidates ballots in
     (concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
              manipulatorPairwiseBeatsTotal manipulatorSet candidates,
              eliminationBasics candidates rounds,
