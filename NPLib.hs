@@ -158,7 +158,7 @@ traceTraces traces model =
     if null traces then model else
     trace (concatMap (\(NTrace tag v show) ->
                           seq model $
-                          "NTrace: " ++ tag ++ " = " ++ show (interpret v model) ++ "\n") traces)
+                          "NTrace: " ++ tag ++ " = " ++ show (interpret v model) ++ "\n") (reverse traces))
     model
 
 --reduceModels :: Maybe [b] -> (Maybe Bool, b)
