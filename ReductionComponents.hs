@@ -4,6 +4,7 @@ import Control.Monad
 import Data.Array.IArray
 import Data.Ix
 import Data.List
+import Data.Maybe
 import Data.Ord
 import Data.Ratio
 import Embeddings
@@ -38,10 +39,11 @@ type PositionalBallot = Array (Candidate Int, Position) Var
 
 showPositionalBallot :: Array (Candidate Int, Position) Bool -> String
 showPositionalBallot dballot =
-    let trueAssocs = filter snd (assocs dballot)
-        candidates = sortNub $ map fst trueAssocs
-        position candidate = lookup candidate trueAssocs
-    in show $ map (fromCandidate . fst) $ sortBy (comparing position) candidates
+    let trueAssocs :: [(Candidate Int, Position)] = map fst $ filter snd (assocs dballot)
+        candidates :: [Candidate Int] = sortNub $ map fst trueAssocs
+        position :: Candidate Int -> Position
+        position candidate = fromJust $ lookup candidate trueAssocs
+    in show $ map fromCandidate $ sortBy (comparing position) candidates
 
 showPairwiseBallot :: [[Bool]] -> String
 showPairwiseBallot dballot = undefined
