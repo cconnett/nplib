@@ -22,6 +22,7 @@ module NPLib
     ,evalNProgram
     ,evalAllNProgram
 
+    ,prop_assertConjoinShow
     )
     where
 
