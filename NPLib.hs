@@ -161,11 +161,6 @@ traceTraces traces model =
                           "NTrace: " ++ tag ++ " = " ++ show (interpret v model) ++ "\n") (reverse traces))
     model
 
---reduceModels :: Maybe [b] -> (Maybe Bool, b)
---reduceModels Nothing = (Nothing, error "Solve time limit exceeded")
---reduceModels (Just []) = (Just False, error "Unsatisfiable formula")
---reduceModels (Just (model:models)) = (Just True, model)
-
 evalAllNProgram :: (Interpret a b) => SatSolver -> NProgramComputation a -> (Maybe Bool, [b])
 evalAllNProgram = solveNProgram interpret
 
