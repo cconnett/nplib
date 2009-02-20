@@ -363,7 +363,6 @@ nsum summands = nsum' (map fromNIntegral summands :: [NInteger])
 nsum' [] = return $ NInteger.fromInteger 0
 nsum' [a] = return $ fromNIntegral a
 nsum' summands = do
-  --sum :: NInteger <- fixedWidthNew bitsNeeded
   frontSum <- nsum frontHalf
   backSum <- nsum backHalf
   sum <- add frontSum backSum
@@ -371,7 +370,6 @@ nsum' summands = do
   where frontHalf = take half summands
         backHalf = drop half summands
         half = (length summands) `div` 2
-        bitsNeeded = m $ sum $ map (\summand -> Bits.bit (width summand - 1) - 1 :: Integer) summands
 
 mul1bit :: NIntegral k => k -> Var -> NProgramComputation k
 mul1bit a bit = do
