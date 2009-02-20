@@ -228,13 +228,7 @@ point candidates eliminations c ballot round =
                      [[Not $ eliminations ! (round, c)]] :
                      [[[Merely $ ballot ! (c, d), Merely $ eliminations ! (round, d)]]
                           | d <- delete c candidates]
-{-
-allOthersEliminated :: [Candidate Int] -> EliminationData -> Round -> Candidate a -> Embedding a
-allOthersEliminated candidates eliminations
-                    r c = embedFormula $ fromListForm
-                          [[(if a == c then neg else id) $ Merely $ eliminations ! (r, a)]
-                               | a <- candidates]
--}
+
 victories, losses :: [Candidate Int] -> FirstPlaceScoreData ->
                      Round -> Candidate Int -> NProgramComputation [Var]
 victories candidates firstPlaceScores
