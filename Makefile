@@ -13,7 +13,7 @@ GHC=ghc
 all: Solve
 
 test: COVERAGEFLAGS=-fhpc
-test: TestAll
+test: TestAll lint
 	rm -f TestAll.tix
 	./TestAll
 	hpc report TestAll
@@ -23,6 +23,9 @@ TestAll.hs: TestNPLib.hs TestNInteger.hs NInteger.hs Utilities.hs
 	python constructTestMain.py TestAll.hs $^
 TestAll: TestAll.hs *.hs
 	${GHC} ${FLAGS} --make $< -o $@
+
+lint: *.hs
+	hlint *.hs --report=report.html > /dev/null
 
 clean:
 	rm -rf *.o *.hi *.tix .hpc TestAll.hs TestAll \
