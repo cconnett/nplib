@@ -19,7 +19,7 @@ test: TestAll lint
 	hpc report TestAll
 	hpc markup TestAll --exclude Main > /dev/null
 
-TestAll.hs: TestNPLib.hs TestNInteger.hs NInteger.hs Utilities.hs
+TestAll.hs: TestNPLib.hs TestNInteger.hs NInteger.hs NPLib.hs Utilities.hs
 	python constructTestMain.py TestAll.hs $^
 TestAll: TestAll.hs *.hs
 	${GHC} ${FLAGS} --make $< -o $@
