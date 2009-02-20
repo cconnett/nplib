@@ -52,6 +52,8 @@ module NInteger
     ,notEqual
     ,leq
     ,lt
+    ,geq
+    ,gt
 
     ,add
     ,sub
@@ -267,7 +269,7 @@ extendToCommonWidth as =
     let commonWidth = maximum $ map width as
     in map (extendTo commonWidth) as
 
-equal, notEqual, leq, lt :: (NIntegral k) => k -> k -> NProgramComputation Formula
+equal, notEqual, leq, lt, geq, gt :: (NIntegral k) => k -> k -> NProgramComputation Formula
 a `equal` b =
     let [a', b'] = extendToCommonWidth [a, b] in
     return $ conjoinAll $ map (uncurry makeEquivalent) (zip a' b')
@@ -292,6 +294,8 @@ a `lt` b = do
   leq' <- a `leq` b
   neq' <- a `notEqual` b
   return $ conjoin leq' neq'
+a `geq` b = b `leq` a
+a `gt` b = b `lt` a
 
 add :: NIntegral k => k -> k -> NProgramComputation k
 add a b = do
