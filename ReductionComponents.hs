@@ -35,10 +35,12 @@ isElimination _ = False
 newtype Position = Position Int
     deriving (Show, Eq, Ord, Ix)
 type Round = Int
+type Voter = Int
 
 type PositionalBallot = Array (Candidate Int, Position) Var
 type PairwiseBallot = Array (Candidate Int, Candidate Int) Var
 type EliminationData = Array (Round, Candidate Int) Var
+type FirstPlaceScoreData = Array (Round, Candidate Int) NInteger
 
 showPositionalBallot :: Array (Candidate Int, Position) Bool -> String
 showPositionalBallot dballot =
@@ -134,25 +136,6 @@ eliminationBasics eliminations candidates rounds = do
                | round <- tail $ init $ rounds, -- No eliminations in the first or last rounds.
                  candidate <- candidates]
 
--- Every ballot must give a point to one candidate and only one
--- candidate in all but the last round.
-firstPlacePoints candidates eliminations ballots rounds = do
-  forM_ ballots $ \ballot -> do
-    forM_ (init rounds) $ \round -> do
-      pointsCsVR <- points candidates eliminations candidates [ballot] [round]
-      assert $ fromListForm [map Merely pointsCsVR]
-  sequence [do
-             pointAVR <- point candidates eliminations a v r
-             pointBVR <- point candidates eliminations b v r
-            -- Giving a point to neither a nor b doesn't run afoul of
-            -- this rule, so we don't need to check if the ballot
-            -- counts.
-             assert $ fromListForm [[Not pointAVR, Not pointBVR]]
-            | v <- ballots,
-              r <- init rounds,
-              a <- candidates,
-              b <- candidates, a < b]
-
 makePositionalBallots :: [Vote Int] -> (Candidate Int, Candidate Int) ->
                          (Position, Position) -> Int -> NProgramComputation [PositionalBallot]
 makePositionalBallots votes candRange posRange numManipulators =
@@ -210,28 +193,31 @@ getScore ballots voters posRange scoreList candidate = do
 
 
 -- IRV and pluralityWithRunoff embeddings
-
--- beats: return a formula that states a's first place point score is
--- higher than b's in round r, respecting eliminations
-beats :: [Candidate Int] -> [PairwiseBallot] -> EliminationData ->
-         Candidate Int -> Candidate Int -> Round -> NProgramComputation Formula
-beats candidates ballots eliminations
-      a b r = do
-        aPoints <- points candidates eliminations [a] ballots [r]
-        bPoints <- points candidates eliminations [b] ballots [r]
-        ntrace ("Round " ++ show r ++ ", " ++ show a ++ " points") aPoints (show::[Bool]->String)
-        aScore <- nsum aPoints
-        bScore <- nsum bPoints
-        ntrace ("Round " ++ show r ++ ", " ++ show a ++ " score") aScore (show::Int->String)
-        aBeatsB <- bScore `lt` aScore >>= embedFormula
-        return $ fromListForm [[Merely $ eliminations ! (r, a),
-                                Merely $ eliminations ! (r, b),
-                                Merely $ aBeatsB]]
+getFirstPlaceScores :: [PairwiseBallot] -> (Candidate Int, Candidate Int) -> EliminationData ->
+                       [Round] -> NProgramComputation FirstPlaceScoreData
+getFirstPlaceScores ballots candRange eliminations rounds =
+  (liftM (listArray (crossRanges (head rounds, last rounds) candRange))) $
+  sequence
+  (
+  [do
+    candPoints <- points (range candRange) eliminations candidate ballots round
+    nsum candPoints
+   | round <- rounds, candidate <- (range candRange)]
+ :: [NProgramComputation NInteger])
+-- Return a formula that affirms a's first place point score is higher
+-- than b's in round r.  This uses the function points to determine first place points.
+outscores :: FirstPlaceScoreData ->
+             Candidate Int -> Candidate Int -> Round -> NProgramComputation Formula
+outscores firstPlaceScores a b r = do
+        let aScore = firstPlaceScores ! (r, a)
+        let bScore = firstPlaceScores ! (r, b)
+        aOutscoresB <- bScore `lt` aScore -- >>= embedFormula
+        return aOutscoresB
 
 points :: [Candidate Int] -> EliminationData ->
-          [Candidate Int] -> [PairwiseBallot] -> [Round] -> NProgramComputation [Var]
-points candidates eliminations cs ballots rs =
-    sequence [point candidates eliminations c ballot r | c <- cs, ballot <- ballots, r <- rs]
+          Candidate Int -> [PairwiseBallot] -> Round -> NProgramComputation [Var]
+points candidates eliminations c ballots r =
+    sequence [point candidates eliminations c ballot r | ballot <- ballots]
 point :: [Candidate Int] -> EliminationData ->
          Candidate Int -> PairwiseBallot -> Round -> NProgramComputation Var
 point candidates eliminations c ballot round =
@@ -247,24 +233,15 @@ allOthersEliminated candidates eliminations
                           [[(if a == c then neg else id) $ Merely $ eliminations ! (r, a)]
                                | a <- candidates]
 -}
-victories, losses :: [Candidate Int] -> [PairwiseBallot] -> EliminationData ->
+victories, losses :: [Candidate Int] -> FirstPlaceScoreData ->
                      Round -> Candidate Int -> NProgramComputation [Var]
-victories candidates ballots eliminations
-          r c = sequence [beats candidates ballots eliminations c a r >>= embedFormula
+victories candidates firstPlaceScores
+          r c = sequence [outscores firstPlaceScores c a r >>= embedFormula
                               | a <- delete c candidates]
-losses candidates ballots eliminations
-       r c = forM (delete c candidates) $ \a -> do
-               aBeatsC <- beats candidates ballots eliminations a c r >>= embedFormula
-               embedFormula $ fromListForm [[Merely $ eliminations ! (r, c), Merely aBeatsC]]
+losses candidates firstPlaceScores
+          r c = sequence [outscores firstPlaceScores a c r >>= embedFormula
+                              | a <- delete c candidates]
 
-{-
--- shouldBeEliminated: candidate c should be eliminated for round r + 1
-shouldBeEliminated :: Proposition (VoteDatum Int) -> [Proposition (VoteDatum Int)] ->
-                      Int -> Candidate Int -> NProgramComputation Var
-shouldBeEliminated allOthersEliminated victories =
-    makeFalse allOthersEliminated
-    mapM (assert . makeFalse) victories
--}
 {-
 -- Copeland voting components
 pairwiseVictory ballots c d =

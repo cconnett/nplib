@@ -50,18 +50,22 @@ pluralityWithRunoffManipulation votes numManipulators target =
     do
       ballots <- makePairwiseBallots votes candRange numManipulators
       eliminations <- makeEliminations rounds candidates
-      ntrace "EliminationData" eliminations $ myTrace 0 (unwords [show numManipulators, show target]) showEliminationData
+      firstPlaceScores <- getFirstPlaceScores ballots candRange eliminations rounds
+
+      ntrace "FirstPlaceScores" firstPlaceScores (show::Array (Round, Candidate Int) Integer -> String)
+      ntrace "EliminationData" eliminations $ myTrace 0 (show numManipulators ++ " manipulators for " ++ show target) showEliminationData
       manipulatorPairwiseBeatsASAR (drop numNonmanipulators ballots) candidates
       manipulatorPairwiseBeatsTotal (drop numNonmanipulators ballots) candidates
-      firstPlacePoints candidates eliminations ballots rounds
+
 
       -- First round elimination: The candidates who advance are
       -- exactly those who have at least |C| - 2 victories
       forM_ candidates $ \c -> do
-        victories <- victories candidates ballots eliminations 0 c
+        victories <- victories candidates firstPlaceScores 0 c
         numVictories <- nsum victories
         ntrace ("First round victories, candidate " ++ show c) numVictories (show::Integer->String)
         advances <- (NInteger.fromInteger $ fromIntegral $ numCandidates - 2) `leq` numVictories >>= embedFormula
+        ntrace (show c ++ " advances") advances (show::Bool->String)
         assert $ makeOpposed advances (eliminations ! (1, c))
 
       -- Second stage elimination: Candidates who lose even once are
@@ -69,11 +73,14 @@ pluralityWithRunoffManipulation votes numManipulators target =
       -- candidate to be a unique winner requires that all others be
       -- eliminated.
       forM_ candidates $ \c -> do
-        losses <- losses candidates ballots eliminations 1 c
-        advances <- embedFormula $ fromListForm [map Not losses]
+        losses <- losses candidates firstPlaceScores 1 c
+        ntrace ("Second round losses, candidate " ++ show c) losses (show::[Bool]->String)
+        advances <- embedFormula $ fromListForm [[Not loss] | loss <- losses]
+        ntrace (show c ++ " advances") advances (show::Bool->String)
         assert $ makeOpposed advances (eliminations ! (2, c))
       -- Target candidate still remains in round 2, with everyone else
       -- eliminated, and therefore wins.
+
       forM_ candidates $ \c -> do
         assert $ fromListForm [[(if c == target then neg else id) $
                                 Merely $ eliminations ! (2, c)]]
