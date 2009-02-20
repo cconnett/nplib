@@ -152,7 +152,7 @@ solveNProgram interpret ss nprogramComputation =
 traceTraces :: [NTrace] -> (IM.IntMap Bool) -> (IM.IntMap Bool)
 traceTraces traces model =
     if null traces then model else
-    trace (concatMap (\(NTrace tag v show) ->
+    myTrace 1 (concatMap (\(NTrace tag v show) ->
                           seq model $
                           "NTrace: " ++ tag ++ " = " ++ show (interpret v model) ++ "\n") (reverse traces))
     model
