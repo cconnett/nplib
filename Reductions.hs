@@ -53,10 +53,9 @@ pluralityWithRunoffManipulation votes numManipulators target =
       firstPlaceScores <- getFirstPlaceScores ballots candRange eliminations rounds
 
       ntrace "FirstPlaceScores" firstPlaceScores (show::Array (Round, Candidate Int) Integer -> String)
-      ntrace "EliminationData" eliminations $ myTrace 0 (show numManipulators ++ " manipulators for " ++ show target) showEliminationData
+      ntrace "EliminationData" eliminations $ myTrace 1 (show numManipulators ++ " manipulators for " ++ show target) showEliminationData
       manipulatorPairwiseBeatsASAR (drop numNonmanipulators ballots) candidates
       manipulatorPairwiseBeatsTotal (drop numNonmanipulators ballots) candidates
-
 
       -- First round elimination: The candidates who advance are
       -- exactly those who have at least |C| - 2 victories
