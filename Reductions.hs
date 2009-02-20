@@ -21,7 +21,7 @@ instance Read (ManipulationProblem)  where
     readsPrec _ "borda" = [(scoringProtocolManipulation (\n -> [n-1,n-2..0]), "")]
     readsPrec _ "veto" = [(scoringProtocolManipulation (\n -> replicate (n-1) 1 ++ [0]), "")]
     readsPrec _ "irv" = [(irvManipulation, "")]
---    readsPrec _ "copeland" = [(copelandManipulation (1%2), "")]
+    readsPrec _ "copeland" = [(copelandManipulation (1%2), "")]
     readsPrec _ _ = error $ "Supported rules are\nplurality\npluralityWithRunoff\nborda\nveto\nirv\ncopeland\n"
 
 scoringProtocolManipulation :: (Int -> [Int]) -> ManipulationProblem
@@ -133,33 +133,20 @@ irvManipulation votes numManipulators target =
         assert $ fromListForm [[(if c == target then neg else id) $
                                 Merely $ eliminations ! (last rounds, c)]]
 
-{-
-copelandManipulation tieValue votes =
-    let voterSet = [1..length votes]
-        manipulatorSet = map (+length votes) [1..length votes + 1]
-        ballots = voterSet ++ manipulatorSet
-        candidates = extractCandidates votes
-        pvm = makePairwiseVictoryMap candidates ballots
-        equivalenceContraints = concat $ map (snd . snd) (M.toList pvm)
-    in
-    (equivalenceContraints ++
-     concat [manipulatorPairwiseBeatsASAR manipulatorSet candidates,
-             manipulatorPairwiseBeatsTotal manipulatorSet candidates] ++
-     concat
-     [copelandScoreBetter tieValue pvm candidates winner loser $ \winnerOutscoresLoser ->
-      [Formula [Clause [neg $ winnerOutscoresLoser, Merely $ Eliminated 0 loser]]]
-          | winner <- candidates,
-            loser  <- delete winner candidates] ++
-     concat
-     [pluralizeEmbedding [copelandScoreBetter tieValue pvm candidates d c | d <- delete c candidates]
-     $ \cOutscoredByOthers ->
-         [Formula [Clause $ [neg $ Merely $ Eliminated 0 c] ++ cOutscoredByOthers]]
-             | c <- candidates]
-    , \votes manipulators target ->
-        count ballots (length votes + manipulators) ++
-        nonManipulatorPairwiseVotes votes voterSet candidates ++
-     -- Target candidate remains, with everyone else eliminated, and therefore wins
-        [Formula [Clause [(if c == target then neg else id) $ Merely $ Eliminated 0 c]
-                     | c <- candidates]]
-    )
--}
+
+copelandManipulation tieValue votes numManipulators target =
+    let numNonmanipulators = length votes
+        candidates = sort $ extractCandidates votes
+        candRange = (head candidates, last candidates) in
+    do
+      ballots <- makePairwiseBallots votes candRange numManipulators
+      manipulatorPairwiseBeatsASAR (drop numNonmanipulators ballots) candidates
+      manipulatorPairwiseBeatsTotal (drop numNonmanipulators ballots) candidates
+
+      pairwiseScores <- getPairwiseScores candRange ballots
+      ntrace "Pairwise Scores" pairwiseScores (show::Array (Candidate Int, Candidate Int) Integer -> String)
+      copelandScores <- getCopelandScores tieValue pairwiseScores candRange
+      ntrace "Copeland Scores" copelandScores (show::Array (Candidate Int) Integer -> String)
+
+      forM_ (delete target candidates) $ \opponent -> do
+        (copelandScores ! target) `gt` (copelandScores ! opponent) >>= assert

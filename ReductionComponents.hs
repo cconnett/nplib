@@ -41,6 +41,8 @@ type PositionalBallot = Array (Candidate Int, Position) Var
 type PairwiseBallot = Array (Candidate Int, Candidate Int) Var
 type EliminationData = Array (Round, Candidate Int) Var
 type FirstPlaceScoreData = Array (Round, Candidate Int) NInteger
+type PairwiseScoreData = Array (Candidate Int, Candidate Int) NInteger
+type CopelandScoreData = Array (Candidate Int) NInteger
 
 showPositionalBallot :: Array (Candidate Int, Position) Bool -> String
 showPositionalBallot dballot =
@@ -242,38 +244,40 @@ losses candidates firstPlaceScores
           r c = sequence [outscores firstPlaceScores a c r >>= embedFormula
                               | a <- delete c candidates]
 
-{-
--- Copeland voting components
-pairwiseVictory ballots c d =
-    let tag = (show c ++ " defeats " ++ show d) in
-    embedProblem' tag $ trans (fromIntegral $ hash tag) $
-                  Inequality ([(-1, [Formula [Clause [Merely $ Counts v],
-                                              Clause [Merely $ PairwiseDatum v c d]]]) | v <- ballots] ++
-                              [( 1, [Formula [Clause [Merely $ Counts v],
-                                              Clause [Merely $ PairwiseDatum v d c]]]) | v <- ballots], -1)
-pairwiseTie pvm c d =
-    let cBeatsD = fst $ pvm M.! (c,d)
-        dBeatsC = fst $ pvm M.! (d,c)
-    in
-      embedProblem (show c ++ " ties " ++ show d) $
-    [Formula [Clause [neg cBeatsD], Clause [neg dBeatsC]]]
-makePairwiseVictoryMap candidates ballots =
-    M.fromList $ [((c,d), pairwiseVictory ballots c d) | c <- candidates, d <- candidates, c /= d]
 
-copelandScoreBetter tieValue pvm candidates c d =
-    let wt = numerator tieValue
-        ww = denominator tieValue
-        tag = (show c ++ " has a better copeland score than " ++ show d)
-        dVics = [fst $ pvm M.! (d,e) | e <- delete d candidates]
-        cVics = [fst $ pvm M.! (c,e) | e <- delete c candidates]
-    in
-      embedProblem tag $
-       pluralizeEmbedding [pairwiseTie pvm d e | e <- delete d candidates] $ \dTies ->
-       pluralizeEmbedding [pairwiseTie pvm c d | e <- delete c candidates] $ \cTies ->
-       trans (fromIntegral $ hash (show c ++ "'s copeland score is better than " ++ show d ++ "'s")) $
-       Inequality ([( ww, makeTrue dVic) | dVic <- dVics] ++
-                   [(-ww, makeTrue cVic) | cVic <- cVics] ++
-                   [( wt, makeTrue dTie) | dTie <- dTies] ++
-                   [(-wt, makeTrue cTie) | cTie <- cTies],
-                   -1)
--}
+-- Copeland voting components
+pairwiseVictory, pairwiseTie :: PairwiseScoreData -> Candidate Int -> Candidate Int ->
+                                NProgramComputation Var
+pairwiseVictory pairwiseScores c d =
+    (pairwiseScores ! (c, d)) `gt` (pairwiseScores ! (d, c)) >>= embedFormula
+
+pairwiseTie pairwiseScores c d =
+    (pairwiseScores ! (c, d)) `equal` (pairwiseScores ! (d, c)) >>= embedFormula
+
+getPairwiseScores :: (Candidate Int, Candidate Int) -> [PairwiseBallot] ->
+                      NProgramComputation PairwiseScoreData
+getPairwiseScores candRange ballots =
+    (liftM $ listArray (crossRanges candRange candRange)) $
+    sequence [nsum [ballot ! (c, d) | ballot <- ballots]
+              | c <- range candRange, d <- range candRange]
+
+getCopelandScores :: Rational -> PairwiseScoreData -> (Candidate Int, Candidate Int) ->
+                     NProgramComputation CopelandScoreData
+getCopelandScores tieValue pairwiseScores candRange =
+    let tiePoints = numerator tieValue
+        winPoints = denominator tieValue in
+    (liftM $ (listArray candRange)) $
+    forM (range candRange) $ \c ->
+    do {
+      values <- forM (delete c $ range candRange) $ \d ->
+                do {
+                  isVic <- pairwiseVictory pairwiseScores c d;
+                  isTie <- pairwiseTie pairwiseScores c d;
+                  vicPrize <- mul1bit (NInteger.fromInteger winPoints) isVic;
+                  tiePrize <- mul1bit (NInteger.fromInteger tiePoints) isTie;
+                  value <- add vicPrize tiePrize;
+                  ntrace ("Prize for " ++ show c ++ " against " ++ show d) value (show::Integer->String);
+                  return value;
+                };
+      nsum (values :: [NInteger])
+    }
