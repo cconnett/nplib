@@ -130,12 +130,8 @@ instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, In
     interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers, interpret v14 answers, interpret v15 answers)
 
 -- Interpret instance for list of interpretables.
-instance (Interpret v d) => Interpret [v] [d] where
-    interpret vs answers = map ((flip interpret) answers) vs
-
-instance (IArray a v, IArray a d, Ix i,
-          Interpret v d) => Interpret (a i v) (a i d) where
-    interpret vs answers = amap ((flip interpret) answers) vs
+instance (Functor f, Interpret a v) => Interpret (f a) (f v) where
+    interpret vs answers = fmap ((flip interpret) answers) vs
 
 instance (Interpret v ()) where
     interpret v answers = ()
