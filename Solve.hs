@@ -33,14 +33,16 @@ main = do
                            pullElections electionsRaw (map read $ drop 3 args) else
                            zip [1..] electionsRaw
        let method = args !! 0
-           winnerCalculator = case method of
-                                "bf"  -> possibleWinnersByBruteForce (read (args !! 1))
-                                --"f2w" -> findTwoWinners (read (args !! 1))
-                                "sat" -> possibleWinnersBySolver satSolver (read (args !! 1))
-                                _     -> error "Supported methods are \nbf\nf2w\nsat"
+           (searchFunction, winnerCalculator) =
+               case method of
+                 "bf"  -> (\pred list -> Just $ head $ filter pred list,
+                           possibleWinnersByBruteForce (read (args !! 1)))
+                 --"f2w" -> findTwoWinners (read (args !! 1))
+                 "sat" -> (findFirst, possibleWinnersBySolver satSolver (read (args !! 1)))
+                 _     -> error "Supported methods are \nbf\nf2w\nsat"
        sequence $
           [do let (theMinimumManipulatorsLower, theMinimumManipulatorsUpper) =
-                      minimumManipulators winnerCalculator election
+                      minimumManipulators searchFunction winnerCalculator election
               putStrLn $ (show electionNo) ++ " lower: " ++ (show theMinimumManipulatorsLower)
               putStrLn $ (show electionNo) ++ " upper: " ++ (show theMinimumManipulatorsUpper)
               hFlush stdout

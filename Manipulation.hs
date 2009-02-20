@@ -91,17 +91,18 @@ possibleWinnersBySolver solver manipulationProblem manipulators votes =
       if manipulators > numVotes then (candidates, []) else
           filter3 (candidateSolver votes manipulators) candidates
 
-minimumManipulators :: (Int -> [Vote Int] -> ([Candidate a], [Candidate a])) ->
+minimumManipulators :: ((Int -> Bool) -> [Int] -> Maybe Int) ->
+                       (Int -> [Vote Int] -> ([Candidate a], [Candidate a])) ->
                        [Vote Int] -> ([Int], [Int])
-minimumManipulators possibleWinners election =
+minimumManipulators searchFunction possibleWinners election =
     (take (length candidates) $ minToWinLower 1 0,
      take (length candidates) $ minToWinUpper 1 0)
     where candidates = extractCandidates election
           possibleWinnersCache = map ((flip possibleWinners) election) [0..]
           minToWinLower n prevCutoff = value : (minToWinLower (n+1) value)
-              where value = fromJust $ findFirst pred [prevCutoff..]
+              where value = fromJust $ searchFunction pred [prevCutoff..]
                     pred m = n <= (length $ concat $ [fst $ possibleWinnersCache !! m,
                                                       snd $ possibleWinnersCache !! m])
           minToWinUpper n prevCutoff = value : (minToWinUpper (n+1) value)
-              where value = fromJust $ findFirst pred [prevCutoff..]
+              where value = fromJust $ searchFunction pred [prevCutoff..]
                     pred m = n <= (length $ fst $ possibleWinnersCache !! m)
