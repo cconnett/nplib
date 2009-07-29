@@ -19,19 +19,6 @@ import qualified Voting (beats)
 
 import Tracing
 
--- Reductions of manipulation instances for specific classes of voting
--- rules to mixed SAT and ILP problem instance.
-data VoteDatum a = VoteDatum {vdVoter :: Int, vdCandidate :: Candidate a, vdPosition :: Int}
-                 | PairwiseDatum {pwVoter :: Int, pwCandidateA, pwCandidateB :: Candidate a}
-                 | Eliminated {eRound :: Int, eCandidate :: Candidate a}
-    deriving (Show, Read, Eq, Ord)
-isVoteDatum (VoteDatum _ _ _) = True
-isVoteDatum _ = False
-isPairwiseDatum (PairwiseDatum _ _ _) = True
-isPairwiseDatum _ = False
-isElimination (Eliminated _ _) = True
-isElimination _ = False
-
 newtype Position = Position Int
     deriving (Show, Eq, Ord, Ix)
 type Round = Int
