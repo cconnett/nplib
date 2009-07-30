@@ -3,7 +3,7 @@
 module SatSolvers
     (solveAll
      ,parse
-     ,SatSolver(ZChaff,RSat,Minisat)
+     ,SatSolver(ZChaff,RSat,Minisat,Clasp)
     )
     where
 
@@ -40,21 +40,23 @@ solversHome = "/home/chris/schoolwork/thesis/sat/"
 solveAll :: SatSolver -> (Int, Formula) -> Maybe [IM.IntMap Bool]
 solveAll ss (numVars, formula) = unsafePerformIO $ runAll ss (numVars, formula)
 
-data SatSolver = ZChaff | RSat | Minisat
+data SatSolver = ZChaff | RSat | Minisat | Clasp
                  deriving (Show)
 instance Arbitrary SatSolver where
-    arbitrary = elements [ZChaff, RSat, Minisat]
+    arbitrary = elements [ZChaff, RSat, Minisat, Clasp]
     coarbitrary = undefined
 
 run1 :: SatSolver -> String -> IO (String, String)
 run1 ZChaff = zchaffRun1
 run1 RSat = rsatRun1
 run1 Minisat = minisatRun1
+run1 Clasp = claspRun1
 
 parse :: SatSolver -> (String, String) -> (Maybe Bool, IM.IntMap Bool)
 parse ZChaff = zchaffParse
 parse RSat = rsatParse
 parse Minisat = minisatParse
+parse Clasp = claspParse
 
 runAll ss (numVars, formula) = do
   solutions <- runAll' ss (numVars, formula)
@@ -182,6 +184,49 @@ minisatParse (stdout, assignmentFile) =
     let assignmentLine = (lines assignmentFile) !! 1
         assignmentStrings = words assignmentLine
         assignments = map read (init assignmentStrings)
+        (trues, falses) = second (map abs) $ partition (>0) assignments
+        sat = case stdout of
+                _ | stdout =~ "UNSATISFIABLE" -> Just False
+                _ | stdout =~ "SATISFIABLE" -> Just True
+                _ | otherwise -> Nothing
+    in (sat, case sat of
+               Just True -> IM.fromList $
+                           [(var, True) | var <- trues] ++
+                           [(var, False) | var <- falses]
+               _ -> error "No solution")
+
+claspRun1 dimacs = do
+  (dimacsName, handle) <- openTempFile "/tmp/" "sat.cnf"
+  hPutStr handle dimacs
+  hClose handle
+  (stdoutName, handle2) <- openTempFile "/tmp/" "clasp.stdout"
+  hClose handle2
+  claspRealRun dimacsName stdoutName
+  readAnswer <- readFile stdoutName
+  putStr (filter (const False) readAnswer)
+  removeFile dimacsName
+  removeFile stdoutName
+  return (readAnswer, "")
+
+claspRealRun dimacsName stdoutName = do
+  let cmd = "bash -c 'ulimit -t 60; " ++
+                   solversHome ++ "clasp/bin/clasp --dimacs < " ++
+                   dimacsName ++ " " ++
+                   "2> /dev/null 1> " ++ stdoutName ++
+                   "'"
+  status <- system cmd
+  case status of
+    ExitSuccess -> return ()
+    ExitFailure n -> if n `elem` [2,10,20] then
+                        return () else
+                        error ("Clasp failure: " ++ show status)
+
+-- Parse the output of clasp into answers about the formula.
+claspParse :: (String, String) -> (Maybe Bool, IM.IntMap Bool)
+claspParse (stdout, assignmentFile) =
+    let assignmentLines = filter ((=="v") . take 1) (lines stdout)
+        assignmentStrings = concatMap (tail . words) assignmentLines
+        assignments = map read assignmentStrings
         (trues, falses) = second (map abs) $ partition (>0) assignments
         sat = case stdout of
                 _ | stdout =~ "UNSATISFIABLE" -> Just False
