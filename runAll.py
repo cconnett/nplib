@@ -45,11 +45,11 @@ class instance(object):
 
     @property
     def input(self):
-        return '/tmp/bigElections/' + \
+        return '/tmp/binElections/' + \
                '-'.join([self.distribution[0], str(self.cands), str(self.n)])
     @property
     def archive(self):
-        return '/home/stu2/s1/cxc0117/thesis/bigElections.bz2/' + \
+        return '/home/stu2/s1/cxc0117/thesis/binElections.bz2/' + \
                '-'.join([self.distribution[0], str(self.cands), str(self.n)]) + \
                '.bz2'
     @property
