@@ -113,6 +113,17 @@ manipulatorPairwiseBeatsTotal manipulatorBallots candidates =
         candidateB <- candidates,
         candidateA < candidateB]]
 
+manipulatorPairwiseBeatsTransitive :: [PairwiseBallot] -> [Candidate Int] -> NProgramComputation ()
+manipulatorPairwiseBeatsTransitive manipulatorBallots candidates =
+    assert $ fromListForm $ concat
+           [[[Not (ballot ! (candidateA, candidateB)),
+              Not (ballot ! (candidateB, candidateC)),
+              Merely (ballot ! (candidateA, candidateC))]
+             | ballot <- manipulatorBallots,
+               candidateA <- candidates,
+               candidateB <- delete candidateA candidates,
+               candidateC <- delete candidateA $ delete candidateB candidates]]
+
 -- Basic constraints for voting rules using elimination.
 eliminationBasics :: EliminationData -> [Candidate Int] -> [Round] -> NProgramComputation ()
 eliminationBasics eliminations candidates rounds = do
@@ -158,6 +169,7 @@ makePairwiseBallots votes candRange numManipulators =
 
       manipulatorPairwiseBeatsASAR manipulatorBallots candidates
       manipulatorPairwiseBeatsTotal manipulatorBallots candidates
+      manipulatorPairwiseBeatsTransitive manipulatorBallots candidates
       nonManipulatorPairwiseVotes votes nonManipulatorBallots candidates
 
       return ballots
