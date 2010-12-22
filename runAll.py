@@ -45,11 +45,11 @@ class instance(object):
 
     @property
     def input(self):
-        return '/tmp/bigElections/' + \
+        return '/tmp/binElections/' + \
                '-'.join([self.distribution[0], str(self.cands), str(self.n)])
     @property
     def archive(self):
-        return '/home/stu2/s1/cxc0117/thesis/bigElections.bz2/' + \
+        return '/home/stu2/s1/cxc0117/thesis/binElections.bz2/' + \
                '-'.join([self.distribution[0], str(self.cands), str(self.n)]) + \
                '.bz2'
     @property
@@ -105,6 +105,10 @@ def dpScore(assignment):
     return max(float(instance.numtogo) / assignment[index]
                for (index, instance) in enumerate(instances[:len(assignment)]))
 
+if len(instances) == 0:
+    print 'No work to do.  Quitting.'
+    sys.exit(0)
+
 dplimit = 30
 if len(instances) <= dplimit:
     print 'Breaking up %d instances' % len(instances)
@@ -144,7 +148,6 @@ while instances:
     checkProcs()
     instances.sort(key=lambda i: (1 if i.host and host != 'DONE' else 0, -i.numtogo, i.numdone, -i.n, -i.cands,),
                    reverse=True)
-    
     for instance in instances:
         if instance.process is None:
             occupiedhosts = [i.host for i in instances if i.process is not None]
@@ -159,7 +162,7 @@ while instances:
                      'bunzip2 -c %s > %s' %
                      (instance.archive, instance.input)]).wait()
             args = ['ssh', '-x', networkhost,
-                    'ulimit -c 0; /usr/bin/nice -19 %s +RTS -c -RTS sat %s %s %s' %
+                    'ulimit -c 0; /usr/bin/nice -19 %s +RTS -H256m -RTS sat %s %s %s' %
                     (executable, instance.rule, instance.input, ' '.join(map(str,instance.missing)))]
             outputfilehandle = file(instance.output, 'a', 1)
             #print 'Launching', ' '.join(args)
@@ -176,7 +179,7 @@ while instances:
     print
     for i in reversed(instances):
         print i
-    
+
     print '%s -- %d processes running -- %d pending.' % \
           (time.asctime(),
            len([i for i in instances if i.host and i.host != 'DONE']),
