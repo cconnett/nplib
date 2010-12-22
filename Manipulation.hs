@@ -4,11 +4,11 @@ module Manipulation
     where
 
 import Control.Exception
+import Control.Concurrent.MVar
 import Data.Array.IArray
 import Data.List
 import Embeddings
 import Foreign (unsafePerformIO)
-import GHC.Conc
 import Maybe
 import NPLib
 import Prelude hiding (catch)
