@@ -1,5 +1,5 @@
 BASEFLAGS=-fglasgow-exts -funbox-strict-fields -dcore-lint
-PROFILEFLAGS=-prof -auto-all
+#PROFILEFLAGS=-prof -auto-all
 #COVERAGEFLAGS=-fhpc
 THREADED=-threaded
 OPTFLAGS=-O -optc-O3 -optc-march=k8
