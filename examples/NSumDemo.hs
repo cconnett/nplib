@@ -1,13 +1,10 @@
 module Main where
 
-import NProgram
-import NVar
-import NInteger
-import Control.Monad.State
 import SatSolvers
-import Solving
+import NPLib
+import NInteger
 
-nsumDemo :: State NProgram (NWord8, NWord8)
+nsumDemo :: NProgramComputation (NInteger, NInteger)
 nsumDemo = do
   x <- new
   sum <- nsum [NInteger.fromInteger 21,

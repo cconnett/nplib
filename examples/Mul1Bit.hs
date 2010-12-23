@@ -1,13 +1,11 @@
 module Main where
 
-import NProgram
-import NInteger
-import Control.Monad.State
 import SatSolvers
-import Solving
+import NPLib
+import NInteger
 
---multiplication :: NIntegral k => State NProgram (k, k, k)
-mul1 :: State NProgram (NInt8, NInt8)
+--multiplication :: NIntegral k => NProgramComputation (k, k, k)
+mul1 :: NProgramComputation (NInt8, NInt8)
 mul1 = do
   let a = NInteger.fromInteger 21
   a' <- mul1bit a true

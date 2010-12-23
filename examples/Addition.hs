@@ -1,22 +1,19 @@
 module Main where
 
-import NProgram
-import NVar
-import NInteger
-import Control.Monad.State
 import SatSolvers
-import Solving
+import NPLib
+import NInteger
 
---addition :: NIntegral k => State NProgram (k, k, k)
-addition :: State NProgram (NWord8, NWord8, NWord8)
+--addition :: NIntegral k => NProgramComputation (k, k, k)
+addition :: NProgramComputation (NWord8, NWord8, NWord8)
 addition = do
   let a = NInteger.fromInteger 47
   --let b = NInteger.fromInteger 81
-  let c = NInteger.fromInteger 128
   --a <- new
   b <- new
   --c <- new
-  add c a b >>= assert
+  c <- add a b
+  equal (NInteger.fromInteger 128) c >>= assert
   return (a, b, c)
 
 main = do
