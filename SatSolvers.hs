@@ -27,8 +27,7 @@ import qualified Data.Set as S
 
 import Tracing
 
---solversHome = "/home/stu2/s1/cxc0117/thesis/sat.x86/"
-solversHome = "/home/chris/schoolwork/thesis/sat/"
+solversHome = "./sat/"
 
 -- Solve a formula, and return a Maybe list of IntMaps containing the
 -- truth assignments of the variables.  If the formula had no
