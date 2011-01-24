@@ -9,7 +9,7 @@ FLAGS=${BASEFLAGS} ${THREADED} ${PROFILEFLAGS} ${COVERAGEFLAGS} ${OPTFLAGS} -i..
 GHC=/tmp/ghc-6.8.2/bin/ghc
 GHC=ghc
 
-all: Addition Equality NSumDemo Mul1Bit Multiplication
+all: Addition Equality NSumDemo Mul1Bit Multiplication UnweightedBorda WeightedApproval
 
 clean:
 	rm -rf *.o Addition Equality NSumDemo Mul1Bit Multiplication
@@ -26,3 +26,7 @@ Multiplication: Multiplication.hs
 	${GHC} ${FLAGS} --make Multiplication.hs -o Multiplication
 NumberMind: NumberMind.hs ../NInteger.hs
 	${GHC} ${FLAGS} --make NumberMind.hs -o NumberMind
+UnweightedBorda: UnweightedBorda.hs ../NInteger.hs
+	${GHC} ${FLAGS} --make UnweightedBorda.hs -o UnweightedBorda
+WeightedApproval: WeightedApproval.hs ../NInteger.hs
+	${GHC} ${FLAGS} --make WeightedApproval.hs -o WeightedApproval
