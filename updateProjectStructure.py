@@ -1,8 +1,9 @@
+from path import path
+import itertools
 import math
-import sys
 import re
 import subprocess
-import path
+import sys
 
 modulerx = re.compile(r'module (\S+)')
 proprx = re.compile(r'^(prop_\S+)')
@@ -45,35 +46,26 @@ for (n, prop) in enumerate(props):
     print '  quickCheck %s' % prop
 
 sys.stdout.close()
+sys.stdout = sys.__stdout__
 
-subprocess.Popen(['ghc', '-M', '-n'] + list(path.path('.').walkfiles('*.hs')),
-                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+ghc = subprocess.Popen(['ghc', '-M'] + list(path('.').walkfiles('*.hs')),
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+if ghc.wait() != 0:
+    print ghc.stdout.read()
+    sys.exit(1)
 target_filename = 'generated_Tupdeps'
 streams = {}
-current_output = None
-primary_input = None
-order_only_inputs = []
-for line in file('Makefile'):
-    dependency = dependencyrx.search(line)
-    if not dependency:
-        continue
-    output = path.path(dependency.group(1))
-    inn = dependency.group(2)
-    if output != current_output:
-        if current_output is not None:
-            dest = current_output.splitpath()[0] / target_filename
-            if dest not in streams:
-                streams[dest] = file(dest, 'w')
-            print >> streams[dest], ': {0}{1} |> !HC |>'.format(current_output.splitpath()[0].relpathto(primary_input),
-                                                                ' | ' + ' '.join(order_only_inputs)
-                                                                if order_only_inputs else '')
-        primary_input = None
-        order_only_inputs = []
-        current_output = output
+dependencies = filter(bool, [dependencyrx.search(line) for line in file('Makefile')])
+for output, dependencies in itertools.groupby(dependencies, key=lambda dep:dep.group(1)):
+    output = path(output)
+    inputs = [dep.group(2) for dep in dependencies]
 
-    if inn.endswith('.hs'):
-        primary_input = inn
-    if inn.endswith('.hi'):
-        order_only_inputs.append(inn)
+    dest = output.splitpath()[0] / target_filename
+    if dest not in streams:
+        streams[dest] = file(dest, 'w')
+    directory = output.splitpath()[0]
+    print >> streams[dest], ': {0}{1} |> !HC |>'.format(directory.relpathto(inputs[0]),
+                                                        ' | ' + ' '.join(directory.relpathto(ooi) for ooi in inputs[1:])
+                                                        if len(inputs) > 1 else '')
 for stream in streams.values():
     stream.close()

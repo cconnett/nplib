@@ -1,23 +1,6 @@
 include_rules
 
-FLAGS = -fglasgow-exts -funbox-strict-fields -dcore-lint
-ifeq (@(PROFILE),y)
-FLAGS += -prof -auto-all
-endif
-ifeq (@(TEST),y)
-FLAGS += -fhpc
-endif
-ifeq (@(THREADED),y)
-FLAGS += -threaded
-endif
-ifeq (@(OPT),y)
-FLAGS += -O -optc-O3 -optc-march=native
-endif
-
-!HC = |> ^ HC %f^ ghc $(FLAGS) -c %f |> %B.o | %B.hi
-!LINK = | %B.hi *.o |> ^ LINK %f^ ghc %B.hs --make |> %B
-
 include generated_Tupdeps
 .gitignore
 
-: foreach BruteForce.o Solve.o GenElections.o |> !LINK |>
+: foreach BruteForce.hs Solve.hs GenElections.hs | *.o |> !LINK |>
