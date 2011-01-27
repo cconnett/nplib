@@ -15,22 +15,9 @@ FLAGS += -O -optc-O3 -optc-march=native
 endif
 
 !HC = |> ^ HC %f^ ghc $(FLAGS) -c %f |> %B.o | %B.hi
+!LINK = | %B.hi *.o |> ^ LINK %f^ ghc %B.hs --make |> %B
 
 include generated_Tupdeps
 .gitignore
-# : Tracing.hs | |> !HC |>
-# : Utilities.hs |> !HC |>
-# : Voting.hs |> !HC |>
-# : Elections.hs | Voting.hi |> !HC |>
-# : RunGenIO.hs | Elections.hi |> !HC |>
-# : SAT.hs | Tracing.hi |> !HC |>
-# : SatSolvers.hs | Tracing.hi SAT.hi |> !HC |>
-# : NPLib.hs | SatSolvers.hi |> !HC |>
-# : Embeddings.hs | NPLib.hi |> !HC |>
-# : NInteger.hs | Embeddings.hi NPLib.hi |> !HC |>
-# : TestNPLib.hs | Elections.hi NInteger.hi Utilities.hi SatSolvers.hi |> !HC |>
-# : TestNInteger.hs | Embeddings.hi NPLib.hi NInteger.hi |> !HC |>
-# : ReductionComponents.hs | Voting.hi Utilities.hi Embeddings.hi NPLib.hi NInteger.hi |> !HC |>
-# : Reductions.hs | ReductionComponents.hi Embeddings.hi NPLib.hi NInteger.hi |> !HC |>
-# : Manipulation.hs | Elections.hi Reductions.hi |> !HC |>
-# : GenElections.hs | RunGenIO.hi Elections.hi Voting.hi |> !HC |>
+
+: foreach BruteForce.o Solve.o GenElections.o |> !LINK |>
