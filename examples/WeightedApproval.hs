@@ -19,11 +19,10 @@ weightedApproval m r scores weights = do
   return x
 
 main = do
-  let m = 3
-  let scores = [0,5,5,5,9,9,9]
-  let weights = [3,7,19,15,10,25,7]
+  scores <- readLn
+  weights <- readLn
+  let m = fromIntegral $ length weights
   let r = fromIntegral $ length scores
   let (result, x) = evalNProgram Clasp (weightedApproval m r scores weights) :: (Maybe Bool, Array (Integer, Integer) Bool)
   print result
-  --forM_ (range ((0,2,2),(m,r,r))) $ \(i1,i2,i3) -> when (x ! (i1,i2,i3)) (putStrLn (show i1 ++ " manipulators put " ++ show i2 ++ " in position " ++ show i3))
   return ()
