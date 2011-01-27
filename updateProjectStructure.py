@@ -48,7 +48,8 @@ sys.stdout.close()
 
 subprocess.Popen(['ghc', '-M', '-n'] + list(path.path('.').walkfiles('*.hs')),
                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-sys.stdout = file('generated_Tupdeps', 'w')
+target_filename = 'generated_Tupdeps'
+streams = {}
 current_output = None
 primary_input = None
 order_only_inputs = []
@@ -56,13 +57,16 @@ for line in file('Makefile'):
     dependency = dependencyrx.search(line)
     if not dependency:
         continue
-    output = dependency.group(1)
+    output = path.path(dependency.group(1))
     inn = dependency.group(2)
     if output != current_output:
         if current_output is not None:
-            print ': {0}{1} |> !HC |>'.format(primary_input,
-                                             ' | ' + ' '.join(order_only_inputs)
-                                             if order_only_inputs else '')
+            dest = current_output.splitpath()[0] / target_filename
+            if dest not in streams:
+                streams[dest] = file(dest, 'w')
+            print >> streams[dest], ': {0}{1} |> !HC |>'.format(current_output.splitpath()[0].relpathto(primary_input),
+                                                                ' | ' + ' '.join(order_only_inputs)
+                                                                if order_only_inputs else '')
         primary_input = None
         order_only_inputs = []
         current_output = output
@@ -71,4 +75,5 @@ for line in file('Makefile'):
         primary_input = inn
     if inn.endswith('.hi'):
         order_only_inputs.append(inn)
-sys.stdout.close()
+for stream in streams.values():
+    stream.close()
