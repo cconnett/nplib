@@ -209,7 +209,7 @@ claspRun1 dimacs = do
 
 claspRealRun dimacsName stdoutName = do
   let cmd = "bash -c 'ulimit -t 60; " ++
-                   solversHome ++ "clasp/bin/clasp --dimacs < " ++
+                   solversHome ++ "clasp/bin/clasp --dimacs --stats < " ++
                    dimacsName ++ " " ++
                    "2> /dev/null 1> " ++ stdoutName ++
                    "'"
