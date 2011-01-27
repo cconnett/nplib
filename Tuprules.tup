@@ -2,7 +2,7 @@ FLAGS = -fglasgow-exts -funbox-strict-fields -dcore-lint
 ifeq (@(PROFILE),y)
 FLAGS += -prof -auto-all
 endif
-ifeq (@(TEST),y)
+ifeq (@(COVERAGE),y)
 FLAGS += -fhpc
 endif
 ifeq (@(THREADED),y)
