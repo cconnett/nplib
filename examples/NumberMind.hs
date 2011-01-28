@@ -15,7 +15,7 @@ numbermind info = do
   mapM ((NInteger.fromInteger 0)`leq`) numbers >>= assertAll
   mapM_ (\(guess, numCorrect) -> assertGuess numbers guess numCorrect) info
   return numbers
-assertGuess :: [NInteger] -> Integer -> Integer -> NProgramComputation ()
+assertGuess :: [NInteger] -> Integer -> Integer -> InstanceBuilder ()
 assertGuess numbers guess numCorrect = do
   let guessDigits = map NInteger.fromInteger $
                     map read $ map (:[]) $ show guess
@@ -29,7 +29,7 @@ assertGuess numbers guess numCorrect = do
   assert guess
 main = print $
        concatMap show $ (snd $
-       evalNProgram Minisat $
+       evalInstance Minisat $
        numbermind
        [(5616185650518293, 2),
         (3847439647293047, 1),

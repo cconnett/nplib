@@ -23,6 +23,6 @@ main = do
   weights <- readLn
   let m = fromIntegral $ length weights
   let r = fromIntegral $ length scores
-  let (result, x) = evalNProgram Clasp (weightedApproval m r scores weights) :: (Maybe Bool, Array (Integer, Integer) Bool)
+  let (result, x) = evalInstance Clasp (weightedApproval m r scores weights) :: (Maybe Bool, Array (Integer, Integer) Bool)
   print result
   return ()

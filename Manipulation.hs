@@ -80,7 +80,7 @@ possibleWinnersBySolver solver manipulationProblem manipulators votes =
                                    [manipulators, manipulators - 1 .. 0] -> Just True
                           _ | not $ all (\k -> M.findWithDefault True (votes, k, target) cache)
                                    [manipulators .. numVotes + 1] -> Just False
-                          otherwise -> execNProgram solver (manipulationProblem votes manipulators target)
+                          otherwise -> execInstance solver (manipulationProblem votes manipulators target)
               putMVar statefulCache (case ans of
                                        Nothing -> cache
                                        Just bool -> M.insert (votes, manipulators, target) bool cache)

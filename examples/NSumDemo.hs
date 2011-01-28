@@ -4,7 +4,7 @@ import SatSolvers
 import NPLib
 import NInteger
 
-nsumDemo :: NProgramComputation (NInteger, NInteger)
+nsumDemo :: InstanceBuilder (NInteger, NInteger)
 nsumDemo = do
   x <- new
   sum <- nsum [NInteger.fromInteger 21,
@@ -15,6 +15,6 @@ nsumDemo = do
   return (x, sum)
 
 main = do
-  let (worked, (x, sum)) = evalNProgram Minisat nsumDemo
+  let (worked, (x, sum)) = evalInstance Minisat nsumDemo
   putStrLn $ "x: " ++ show x
   putStrLn $ "sum: " ++ show sum

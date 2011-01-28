@@ -4,8 +4,8 @@ import SatSolvers
 import NPLib
 import NInteger
 
---addition :: NIntegral k => NProgramComputation (k, k, k)
-addition :: NProgramComputation (NWord8, NWord8, NWord8)
+--addition :: NIntegral k => InstanceBuilder (k, k, k)
+addition :: InstanceBuilder (NWord8, NWord8, NWord8)
 addition = do
   let a = NInteger.fromInteger 47
   --let b = NInteger.fromInteger 81
@@ -17,7 +17,7 @@ addition = do
   return (a, b, c)
 
 main = do
-  let (worked, (a,b,c)) = evalNProgram RSat addition
+  let (worked, (a,b,c)) = evalInstance RSat addition
   putStrLn $ "a: " ++ show a
   putStrLn $ "b: " ++ show b
   putStrLn $ "c: " ++ show c

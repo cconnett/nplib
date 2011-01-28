@@ -5,7 +5,7 @@ import NPLib
 import NInteger
 import Data.Int
 
-equality :: NProgramComputation (NInt16, NInt16)
+equality :: InstanceBuilder (NInt16, NInt16)
 equality = do
   let a = NInteger.fromInteger 1238
   b <- new
@@ -13,6 +13,6 @@ equality = do
   return (a, b)
 
 main = do
-  let (worked, (a,b)) = evalNProgram Minisat equality
+  let (worked, (a,b)) = evalInstance Minisat equality
   putStrLn $ "a: " ++ show (a::Int16)
   putStrLn $ "b: " ++ show (b::Int16)

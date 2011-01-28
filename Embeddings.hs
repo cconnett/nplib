@@ -19,13 +19,13 @@ import SAT
 import NPLib
 
 class Cond c where
-    condify :: c -> NProgramComputation Var
+    condify :: c -> InstanceBuilder Var
 instance Cond Var where
     condify = return
 instance Cond Formula where
     condify = embedFormula
 
-if' :: (Cond c1, Cond c2, Cond c3) => c1 -> c2 -> c3 -> NProgramComputation ()
+if' :: (Cond c1, Cond c2, Cond c3) => c1 -> c2 -> c3 -> InstanceBuilder ()
 if' cond then' else' = do
   condVar <- condify cond
   thenVar <- condify then'
@@ -33,7 +33,7 @@ if' cond then' else' = do
   assert $ makeEquivalent condVar thenVar
   assert $ makeOpposed condVar elseVar
 
-embedFormula :: Formula -> NProgramComputation Var
+embedFormula :: Formula -> InstanceBuilder Var
 embedFormula = embedFormula' . toListForm
 embedFormula' []= takeSatVar
 embedFormula' [[Merely v]] = return v
@@ -56,6 +56,6 @@ negateFormula formula = do
   surrogate <- embedFormula formula
   return $ makeFalse surrogate
 
-deny :: Formula -> NProgramComputation ()
+deny :: Formula -> InstanceBuilder ()
 deny = (>>= assert) . negateFormula
 

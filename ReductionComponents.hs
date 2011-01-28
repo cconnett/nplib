@@ -52,7 +52,7 @@ showEliminationData eliminations =
     in show trueAssocs
 -- Non-manipulators' positional votes, directly encoded.
 nonManipulatorPositionalVotes :: [Vote Int] -> [PositionalBallot] -> (Candidate Int, Candidate Int) ->
-                                 (Position, Position) -> NProgramComputation ()
+                                 (Position, Position) -> InstanceBuilder ()
 nonManipulatorPositionalVotes votes ballots candRange posRange =
     sequence_ [do
                 assert $ makeTrue (ballots !! voter ! (candidate, correctPosition))
@@ -62,7 +62,7 @@ nonManipulatorPositionalVotes votes ballots candRange posRange =
                  (candidate, correctPosition) <- zip (fromVote vote) (range posRange)]
 
 nonManipulatorPairwiseVotes :: [Vote Int] -> [PairwiseBallot] -> [Candidate Int] ->
-                               NProgramComputation ()
+                               InstanceBuilder ()
 nonManipulatorPairwiseVotes votes ballots candidates =
     assertAll [(if Voting.beats vote candidateA candidateB then makeTrue else makeFalse)
                (ballots !! voter ! (candidateA, candidateB))
@@ -73,7 +73,7 @@ nonManipulatorPairwiseVotes votes ballots candidates =
 
 -- Manipulator vote constraints (no two candidates in same position).
 manipulatorPositionalPositionInjection :: [PositionalBallot] -> (Candidate Int, Candidate Int) ->
-                                          (Position, Position) -> NProgramComputation ()
+                                          (Position, Position) -> InstanceBuilder ()
 manipulatorPositionalPositionInjection manipulatorBallots candRange posRange =
     assert $ fromListForm
     [[Not (ballot ! (a, position)), Not (ballot ! (b, position))]
@@ -83,7 +83,7 @@ manipulatorPositionalPositionInjection manipulatorBallots candRange posRange =
 
 -- Manipulator vote constraints (every candidate in some position).
 manipulatorPositionalPositionSurjection :: [PositionalBallot] -> (Candidate Int, Candidate Int) ->
-                                           (Position, Position) -> NProgramComputation ()
+                                           (Position, Position) -> InstanceBuilder ()
 manipulatorPositionalPositionSurjection manipulatorBallots candRange posRange =
     assert $ fromListForm $ concat
     [[[Merely (ballot ! (c, position)) | position <- range posRange]]
@@ -94,7 +94,7 @@ manipulatorPositionalPositionSurjection manipulatorBallots candRange posRange =
 -- the previous two constraints.  (Injection + Surjection = 1-to-1)
 
 -- Pairwise beat relationship is anti-symmetric and anti-reflexive
-manipulatorPairwiseBeatsASAR :: [PairwiseBallot] -> [Candidate Int] -> NProgramComputation ()
+manipulatorPairwiseBeatsASAR :: [PairwiseBallot] -> [Candidate Int] -> InstanceBuilder ()
 manipulatorPairwiseBeatsASAR manipulatorBallots candidates =
     assert $ fromListForm $ concat
     [[[Not (ballot ! (candidateA, candidateB)),
@@ -105,7 +105,7 @@ manipulatorPairwiseBeatsASAR manipulatorBallots candidates =
         candidateA <= candidateB]]
 
 -- Pairwise beat relationship is total
-manipulatorPairwiseBeatsTotal :: [PairwiseBallot] -> [Candidate Int] -> NProgramComputation ()
+manipulatorPairwiseBeatsTotal :: [PairwiseBallot] -> [Candidate Int] -> InstanceBuilder ()
 manipulatorPairwiseBeatsTotal manipulatorBallots candidates =
     assert $ fromListForm $ concat
     [[[Merely (ballot ! (candidateA, candidateB)),
@@ -115,7 +115,7 @@ manipulatorPairwiseBeatsTotal manipulatorBallots candidates =
         candidateB <- candidates,
         candidateA < candidateB]]
 
-manipulatorPairwiseBeatsTransitive :: [PairwiseBallot] -> [Candidate Int] -> NProgramComputation ()
+manipulatorPairwiseBeatsTransitive :: [PairwiseBallot] -> [Candidate Int] -> InstanceBuilder ()
 manipulatorPairwiseBeatsTransitive manipulatorBallots candidates =
     assert $ fromListForm $ concat
            [[[Not (ballot ! (candidateA, candidateB)),
@@ -127,7 +127,7 @@ manipulatorPairwiseBeatsTransitive manipulatorBallots candidates =
                candidateC <- delete candidateA $ delete candidateB candidates]]
 
 -- Basic constraints for voting rules using elimination.
-eliminationBasics :: EliminationData -> [Candidate Int] -> [Round] -> NProgramComputation ()
+eliminationBasics :: EliminationData -> [Candidate Int] -> [Round] -> InstanceBuilder ()
 eliminationBasics eliminations candidates rounds = do
     -- Everyone's in to start (all eliminations for round 0 are false)
     assertAll [makeFalse (eliminations ! (0, candidate))
@@ -139,7 +139,7 @@ eliminationBasics eliminations candidates rounds = do
                  candidate <- candidates]
 
 makePositionalBallots :: [Vote Int] -> (Candidate Int, Candidate Int) ->
-                         (Position, Position) -> Int -> NProgramComputation [PositionalBallot]
+                         (Position, Position) -> Int -> InstanceBuilder [PositionalBallot]
 makePositionalBallots votes candRange posRange numManipulators =
     let numCandidates = rangeSize candRange
         numNonmanipulators = length votes
@@ -156,7 +156,7 @@ makePositionalBallots votes candRange posRange numManipulators =
       return ballots
 
 makePairwiseBallots :: [Vote Int] -> (Candidate Int, Candidate Int) -> Int ->
-                       NProgramComputation [PairwiseBallot]
+                       InstanceBuilder [PairwiseBallot]
 makePairwiseBallots votes candRange numManipulators =
     let numCandidates = rangeSize candRange
         numNonmanipulators = length votes
@@ -176,7 +176,7 @@ makePairwiseBallots votes candRange numManipulators =
 
       return ballots
 
-makeEliminations :: [Round] -> [Candidate Int] -> NProgramComputation EliminationData
+makeEliminations :: [Round] -> [Candidate Int] -> InstanceBuilder EliminationData
 makeEliminations rounds candidates = do
     let candRange = (head candidates, last candidates)
     let roundRange = (head rounds, last rounds)
@@ -186,7 +186,7 @@ makeEliminations rounds candidates = do
     return eliminations
 
 --Scoring protocol related embeddings
-getScore :: [PositionalBallot] -> [Int] -> (Position, Position) -> [Int] -> Candidate Int -> NProgramComputation NInteger
+getScore :: [PositionalBallot] -> [Int] -> (Position, Position) -> [Int] -> Candidate Int -> InstanceBuilder NInteger
 getScore ballots voters posRange scoreList candidate = do
   scores <- sequence [mul1bit (NInteger.fromInteger $ fromIntegral $ (scoreList !! index posRange position) :: NInteger)
                               (ballots !! voter ! (candidate, position))
@@ -197,7 +197,7 @@ getScore ballots voters posRange scoreList candidate = do
 
 -- IRV and pluralityWithRunoff embeddings
 getFirstPlaceScores :: [PairwiseBallot] -> (Candidate Int, Candidate Int) -> EliminationData ->
-                       [Round] -> NProgramComputation FirstPlaceScoreData
+                       [Round] -> InstanceBuilder FirstPlaceScoreData
 getFirstPlaceScores ballots candRange eliminations rounds =
   (liftM (listArray (crossRanges (head rounds, last rounds) candRange))) $
   sequence
@@ -206,11 +206,11 @@ getFirstPlaceScores ballots candRange eliminations rounds =
     candPoints <- points (range candRange) eliminations candidate ballots round
     nsum candPoints
    | round <- rounds, candidate <- (range candRange)]
- :: [NProgramComputation NInteger])
+ :: [InstanceBuilder NInteger])
 -- Return a formula that affirms a's first place point score is higher
 -- than b's in round r.  This uses the function points to determine first place points.
 outscores :: FirstPlaceScoreData ->
-             Candidate Int -> Candidate Int -> Round -> NProgramComputation Formula
+             Candidate Int -> Candidate Int -> Round -> InstanceBuilder Formula
 outscores firstPlaceScores a b r = do
         let aScore = firstPlaceScores ! (r, a)
         let bScore = firstPlaceScores ! (r, b)
@@ -218,11 +218,11 @@ outscores firstPlaceScores a b r = do
         return aOutscoresB
 
 points :: [Candidate Int] -> EliminationData ->
-          Candidate Int -> [PairwiseBallot] -> Round -> NProgramComputation [Var]
+          Candidate Int -> [PairwiseBallot] -> Round -> InstanceBuilder [Var]
 points candidates eliminations c ballots r =
     sequence [point candidates eliminations c ballot r | ballot <- ballots]
 point :: [Candidate Int] -> EliminationData ->
-         Candidate Int -> PairwiseBallot -> Round -> NProgramComputation Var
+         Candidate Int -> PairwiseBallot -> Round -> InstanceBuilder Var
 point candidates eliminations c ballot round =
     embedFormula $ fromListForm $ concat $
                      --[[Merely (Counts v)],
@@ -231,7 +231,7 @@ point candidates eliminations c ballot round =
                           | d <- delete c candidates]
 
 victories, losses :: [Candidate Int] -> FirstPlaceScoreData ->
-                     Round -> Candidate Int -> NProgramComputation [Var]
+                     Round -> Candidate Int -> InstanceBuilder [Var]
 victories candidates firstPlaceScores
           r c = sequence [outscores firstPlaceScores c a r >>= embedFormula
                               | a <- delete c candidates]
@@ -242,7 +242,7 @@ losses candidates firstPlaceScores
 
 -- Copeland voting components
 pairwiseVictory, pairwiseTie :: PairwiseScoreData -> Candidate Int -> Candidate Int ->
-                                NProgramComputation Var
+                                InstanceBuilder Var
 pairwiseVictory pairwiseScores c d =
     (pairwiseScores ! (c, d)) `gt` (pairwiseScores ! (d, c)) >>= embedFormula
 
@@ -250,14 +250,14 @@ pairwiseTie pairwiseScores c d =
     (pairwiseScores ! (c, d)) `equal` (pairwiseScores ! (d, c)) >>= embedFormula
 
 getPairwiseScores :: (Candidate Int, Candidate Int) -> [PairwiseBallot] ->
-                      NProgramComputation PairwiseScoreData
+                      InstanceBuilder PairwiseScoreData
 getPairwiseScores candRange ballots =
     (liftM $ listArray (crossRanges candRange candRange)) $
     sequence [nsum [ballot ! (c, d) | ballot <- ballots]
               | c <- range candRange, d <- range candRange]
 
 getCopelandScores :: Rational -> PairwiseScoreData -> (Candidate Int, Candidate Int) ->
-                     NProgramComputation CopelandScoreData
+                     InstanceBuilder CopelandScoreData
 getCopelandScores tieValue pairwiseScores candRange =
     let tiePoints = numerator tieValue
         winPoints = denominator tieValue in

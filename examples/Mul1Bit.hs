@@ -5,8 +5,8 @@ import NPLib
 import NInteger
 import Data.Int
 
---multiplication :: NIntegral k => NProgramComputation (k, k, k)
-mul1 :: NProgramComputation (NInt8, NInt8)
+--multiplication :: NIntegral k => InstanceBuilder (k, k, k)
+mul1 :: InstanceBuilder (NInt8, NInt8)
 mul1 = do
   let a = NInteger.fromInteger 21
   a' <- mul1bit a true
@@ -14,6 +14,6 @@ mul1 = do
   return (a', z')
 
 main = do
-  let (worked, (a',z')) = evalNProgram Minisat mul1
+  let (worked, (a',z')) = evalInstance Minisat mul1
   putStrLn $ "a': " ++ show (a'::Int8)
   putStrLn $ "z': " ++ show (z'::Int8)

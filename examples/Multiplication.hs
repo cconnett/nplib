@@ -5,7 +5,7 @@ import NPLib
 import NInteger
 import Control.Monad
 
-multiplication :: NProgramComputation (NWord8, NWord8, NWord8)
+multiplication :: InstanceBuilder (NWord8, NWord8, NWord8)
 multiplication = do
   --let a = NInteger.fromInteger 3
   --let b = NInteger.fromInteger 7
@@ -19,7 +19,7 @@ multiplication = do
   return (a, b, c)
 
 main = do
-  let (_, solutions) = evalAllNProgram Minisat multiplication
+  let (_, solutions) = evalAllInstance Minisat multiplication
   forM_ solutions $ \(a,b,c) -> do
          putStrLn $ "a: " ++ show a
          putStrLn $ "b: " ++ show b

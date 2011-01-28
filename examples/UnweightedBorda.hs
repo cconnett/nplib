@@ -6,7 +6,7 @@ import NInteger
 import Control.Monad
 import Data.Array
 
---unweightedBorda :: Integer -> Integer -> [Integer] -> NProgramComputation ()
+--unweightedBorda :: Integer -> Integer -> [Integer] -> InstanceBuilder ()
 unweightedBorda m startingScores = do
   let r = fromIntegral $ length startingScores
   x <- liftM (listArray ((0,2,2),(m,r,r))) $ takeSatVars $ fromIntegral $ (m+1) * (r-1) * (r-1)
@@ -33,7 +33,7 @@ main = do
   let m = 2
   let scores = [0,5,5,5,9,9,9]
   let r = fromIntegral $ length scores
-  let (result, x) = evalNProgram Clasp (unweightedBorda m scores) :: (Maybe Bool, Array (Integer, Integer, Integer) Bool)
+  let (result, x) = evalInstance Clasp (unweightedBorda m scores) :: (Maybe Bool, Array (Integer, Integer, Integer) Bool)
   print result
   --forM_ (range ((0,2,2),(m,r,r))) $ \(i1,i2,i3) -> when (x ! (i1,i2,i3)) (putStrLn (show i1 ++ " manipulators put " ++ show i2 ++ " in position " ++ show i3))
   return ()

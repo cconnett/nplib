@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module NPLib
-    (NProgramComputation
+    (InstanceBuilder
     ,takeSatVar
     ,takeSatVars
     ,assert
@@ -23,9 +23,9 @@ module NPLib
     ,interpret
     ,varsUnderModel
 
-    ,execNProgram
-    ,evalNProgram
-    ,evalAllNProgram
+    ,execInstance
+    ,evalInstance
+    ,evalAllInstance
 
     ,prop_assertConjoinShow
     )
@@ -42,39 +42,39 @@ import qualified Data.IntMap as IM
 
 data NTrace = forall n d. (Interpret n d) => NTrace String n (d -> String)
 
-data NProgram = NProgram Formula [Var] [NTrace]
-instance Show NProgram where
-    show (NProgram formula _ _) = show formula
+data Instance = Instance Formula [Var] [NTrace]
+instance Show Instance where
+    show (Instance formula _ _) = show formula
 
-type NProgramComputation a = State NProgram a
+type InstanceBuilder a = State Instance a
 type Model = IM.IntMap Bool
 
 -- Empty program has first and second variables as a reference false
 -- and true respectively.
-emptyNProgram :: NProgram
-emptyNProgram = NProgram (fromListForm [[Not 1], [Merely 2]]) [3..] []
+emptyInstance :: Instance
+emptyInstance = Instance (fromListForm [[Not 1], [Merely 2]]) [3..] []
 
 false = 1 :: Var
 true = 2 :: Var
 
-takeSatVar :: NProgramComputation Var
+takeSatVar :: InstanceBuilder Var
 takeSatVar = do
-  NProgram formula unusedVars traces <- get
-  put $ NProgram formula (tail unusedVars) traces
+  Instance formula unusedVars traces <- get
+  put $ Instance formula (tail unusedVars) traces
   return $ head unusedVars
 
 takeSatVars n = replicateM n takeSatVar
 
-assert :: Formula -> NProgramComputation ()
+assert :: Formula -> InstanceBuilder ()
 assert formula = do
-  NProgram f unusedVars traces <- get
-  put $ NProgram (conjoin f formula) unusedVars traces
-assertAll :: [Formula] -> NProgramComputation ()
+  Instance f unusedVars traces <- get
+  put $ Instance (conjoin f formula) unusedVars traces
+assertAll :: [Formula] -> InstanceBuilder ()
 assertAll = assert . conjoinAll
 
 ntrace tag v = do
-  NProgram f unusedVars traces <- get
-  put $ NProgram f unusedVars ((NTrace tag v show):traces)
+  Instance f unusedVars traces <- get
+  put $ Instance f unusedVars ((NTrace tag v show):traces)
 
 -- The class of Nondeterministic types represent non-deterministic
 -- structures.
@@ -84,7 +84,7 @@ class Nondeterministic n where
     fromVars :: [Var] -> n
 
     -- Statefully allocate new variables
-    new :: NProgramComputation n
+    new :: InstanceBuilder n
 
 -- The Interpret class allows the interpretation of a Nondeterministic
 -- type into a related deterministic type, given a model of the
@@ -142,10 +142,10 @@ instance (Interpret n d) => Interpret [n] [d] where
 instance (Ix i, Interpret n d) => Interpret (Array i n) (Array i d) where
     interpret = fmap . interpret
 
--- Solving NPrograms with a SAT Solver
-solveNProgram :: (Model -> n -> d) -> SatSolver -> NProgramComputation n -> (Maybe Bool, [d])
-solveNProgram interpret ss nprogramComputation =
-    let (theNVars, NProgram formula unusedVars traces) = runState nprogramComputation emptyNProgram
+-- Solving Instances with a SAT Solver
+solveInstance :: (Model -> n -> d) -> SatSolver -> InstanceBuilder n -> (Maybe Bool, [d])
+solveInstance interpret ss instanceBuilder =
+    let (theNVars, Instance formula unusedVars traces) = runState instanceBuilder emptyInstance
         numVars = head unusedVars - 1
         results = solveAll ss (numVars, formula)
     in case results of
@@ -163,19 +163,19 @@ traceTraces traces model =
                           "NTrace: " ++ tag ++ " = " ++ show (interpret model n) ++ "\n") (reverse traces))
     model
 
-evalAllNProgram :: (Interpret n d) => SatSolver -> NProgramComputation n -> (Maybe Bool, [d])
-evalAllNProgram = solveNProgram interpret
+evalAllInstance :: (Interpret n d) => SatSolver -> InstanceBuilder n -> (Maybe Bool, [d])
+evalAllInstance = solveInstance interpret
 
-evalNProgram :: (Interpret n d) => SatSolver -> NProgramComputation n -> (Maybe Bool, d)
-evalNProgram ss nprogramComputation =
-    (second head) $ evalAllNProgram ss nprogramComputation
+evalInstance :: (Interpret n d) => SatSolver -> InstanceBuilder n -> (Maybe Bool, d)
+evalInstance ss instanceBuilder =
+    (second head) $ evalAllInstance ss instanceBuilder
 
-execNProgram :: SatSolver -> NProgramComputation n -> Maybe Bool
-execNProgram ss nprogramComputation =
-    fst $ solveNProgram (const (const ())) ss nprogramComputation
+execInstance :: SatSolver -> InstanceBuilder n -> Maybe Bool
+execInstance ss instanceBuilder =
+    fst $ solveInstance (const (const ())) ss instanceBuilder
 
 {- QuickCheck Properties -}
 
 prop_assertConjoinShow formula =
-    let (NProgram baseFormula _ _) = emptyNProgram in
-    (show $ execState (assert formula) emptyNProgram) == (show $ conjoin baseFormula formula)
+    let (Instance baseFormula _ _) = emptyInstance in
+    (show $ execState (assert formula) emptyInstance) == (show $ conjoin baseFormula formula)

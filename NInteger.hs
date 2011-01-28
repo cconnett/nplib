@@ -137,7 +137,7 @@ instance Interpret NInteger Integer where
 fixedWidthNew width = do
   vars <- takeSatVars width
   return $ fromVars vars
-newNInteger :: Int -> NProgramComputation NInteger
+newNInteger :: Int -> InstanceBuilder NInteger
 newNInteger  = fixedWidthNew
 
 asSignedInteger :: [Bool] -> Integer
@@ -271,7 +271,7 @@ extendToCommonWidth as =
     let commonWidth = maximum $ map width as
     in map (extendTo commonWidth) as
 
-equal, notEqual, leq, lt, geq, gt :: (NIntegral k) => k -> k -> NProgramComputation Formula
+equal, notEqual, leq, lt, geq, gt :: (NIntegral k) => k -> k -> InstanceBuilder Formula
 a `equal` b =
     let [a', b'] = extendToCommonWidth [a, b] in
     return $ conjoinAll $ map (uncurry makeEquivalent) (zip a' b')
@@ -299,7 +299,7 @@ a `lt` b = do
 a `geq` b = b `leq` a
 a `gt` b = b `lt` a
 
-add :: NIntegral k => k -> k -> NProgramComputation k
+add :: NIntegral k => k -> k -> InstanceBuilder k
 add a b = do
   let [a', b'] = extendToCommonWidth [a, b]
   let theWidth = length a' -- == width b' == width c'
@@ -348,7 +348,7 @@ sub a b = do
   equal a a' >>= assert
   return c
 -- Take the two's complement of x
-negate :: forall k. (NIntegral k) => k -> NProgramComputation k
+negate :: forall k. (NIntegral k) => k -> InstanceBuilder k
 negate x = do
   (onesComplementX::k) <- new
   forM_ (zip (toVars x) (toVars onesComplementX)) $ \(v, ocv) ->
@@ -364,7 +364,7 @@ x `ashiftR` i =
   let vars = toVars x
   in fromVars . (replicate i (head vars) ++) . toVars $ x
 
-nsum :: (NIntegral k) => [k] -> NProgramComputation NInteger
+nsum :: (NIntegral k) => [k] -> InstanceBuilder NInteger
 nsum summands = nsum' (map fromNIntegral summands :: [NInteger])
 nsum' [] = return $ NInteger.fromInteger 0
 nsum' [a] = return $ fromNIntegral a
@@ -377,7 +377,7 @@ nsum' summands = do
         backHalf = drop half summands
         half = (length summands) `div` 2
 
-mul1bit :: NIntegral k => k -> Var -> NProgramComputation k
+mul1bit :: NIntegral k => k -> Var -> InstanceBuilder k
 mul1bit a bit = do
   outVars <- takeSatVars (width a)
   forM_ (zip (toVars a) outVars) $ \(ai, oi) ->
@@ -386,7 +386,7 @@ mul1bit a bit = do
                              [Not oi, Merely bit]]
   return (fromVars outVars)
 
-mul :: (NIntegral k) => k -> k -> NProgramComputation k
+mul :: (NIntegral k) => k -> k -> InstanceBuilder k
 mul a b = do
   partialProducts :: [NInteger] <- liftM (map fromNIntegral) $ mapM (mul1bit a) (reverse $ toVars b)
   result <- nsum $ map (uncurry shiftL) $ zip partialProducts [0..]

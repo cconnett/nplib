@@ -18,7 +18,7 @@ prop_doubleNegation prop = prop == (neg $ neg $ prop)
 
 prop_if' ss a b =
     (a==b) == (snd $
-               evalNProgram ss (do
+               evalInstance ss (do
                                  cond::Var <- new
                                  let a'::NInteger = NInteger.fromInteger a
                                  let b'::NInteger = NInteger.fromInteger b
@@ -33,7 +33,7 @@ prop_if' ss a b =
               )
 prop_interpretInteger ss a =
     a == (snd $
-          evalNProgram ss (do
+          evalInstance ss (do
                             let a'::NInteger = NInteger.fromInteger a
                             b'::NInteger <- newNInteger (width a')
                             a'`equal`b' >>= assert
@@ -41,7 +41,7 @@ prop_interpretInteger ss a =
          )
 prop_deny ss a b =
     (a/=b) == (fromJust $
-               execNProgram ss (do
+               execInstance ss (do
                                  let a'::NInteger = NInteger.fromInteger a
                                  let b'::NInteger = NInteger.fromInteger b
                                  eq <- a'`equal`b'
