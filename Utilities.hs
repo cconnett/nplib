@@ -1,5 +1,5 @@
-{-# OPTIONS -fglasgow-exts #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Utilities where
 

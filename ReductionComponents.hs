@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module ReductionComponents where
 
 import Control.Monad

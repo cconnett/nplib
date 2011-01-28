@@ -1,6 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-
 module SAT
     (Formula
     ,Clause

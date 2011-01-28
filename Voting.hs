@@ -1,5 +1,6 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Voting
     where

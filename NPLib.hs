@@ -1,4 +1,9 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module NPLib
     (NProgramComputation
     ,takeSatVar

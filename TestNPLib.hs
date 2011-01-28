@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module TestNPLib where
 
 import Data.Maybe

@@ -1,4 +1,3 @@
-FLAGS = -fglasgow-exts -funbox-strict-fields -dcore-lint
 ifeq (@(PROFILE),y)
 FLAGS += -prof -auto-all
 endif
@@ -9,7 +8,7 @@ ifeq (@(THREADED),y)
 FLAGS += -threaded
 endif
 ifeq (@(OPT),y)
-FLAGS += -O -optc-O3 -optc-march=native
+FLAGS += -O -optc-O3 -optc-march=native -funbox-strict-fields
 endif
 
 !HC = |> ^ GHC %f^ ghc $(FLAGS) $(import_path) -c %f |> %B.o %B.hi

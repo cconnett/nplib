@@ -1,4 +1,6 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- The primary convenience type for non-deterministic programming
 -- provided by nplib is a representation of a non-deterministic

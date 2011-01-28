@@ -1,4 +1,5 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Embeddings
     (embedFormula
     ,embedFormulas
