@@ -12,4 +12,4 @@ FLAGS += -O -optc-O3 -optc-march=native -funbox-strict-fields
 endif
 
 !HC = |> ^ GHC %f^ ghc $(FLAGS) $(import_path) -c %f |> %B.o %B.hi
-!LINK = | %B.hi |> ^ LINK %f^ ghc $(import_path) %B.hs --make |> %B
+!LINK = | %B.hi |> ^ LINK %f^ ghc -v0 $(import_path) %B.hs --make |> %B
