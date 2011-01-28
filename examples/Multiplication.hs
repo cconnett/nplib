@@ -21,8 +21,7 @@ multiplication = do
 main = do
   let (_, solutions) = evalAllNProgram Minisat multiplication
   forM_ solutions $ \(a,b,c) -> do
-         putStrLn $ "a: " ++ show (a::Int)
-         putStrLn $ "b: " ++ show (b::Int)
-         putStrLn $ "c: " ++ show (c::Int)
-         --putStrLn $ "c': " ++ show (c'::Integer)
+         putStrLn $ "a: " ++ show a
+         putStrLn $ "b: " ++ show b
+         putStrLn $ "c: " ++ show c
          putStrLn ""

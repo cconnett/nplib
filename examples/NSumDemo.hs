@@ -16,5 +16,5 @@ nsumDemo = do
 
 main = do
   let (worked, (x, sum)) = evalNProgram Minisat nsumDemo
-  putStrLn $ "x: " ++ show (x::Int)
-  putStrLn $ "sum: " ++ show (sum::Int)
+  putStrLn $ "x: " ++ show x
+  putStrLn $ "sum: " ++ show sum

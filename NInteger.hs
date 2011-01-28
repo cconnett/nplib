@@ -103,35 +103,35 @@ instance NVar NInt8 where
     toVars (NInt8 vars) = vars
     fromVars = NInt8 . (makeCorrectLength arithmeticStyle 8)
     new = fixedWidthNew 8
-instance (Integral i) => Interpret NInt8 i where
+instance Interpret NInt8 Int8 where
     interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
 instance NVar NInt16 where
     toVars (NInt16 vars) = vars
     fromVars = NInt16 . (makeCorrectLength arithmeticStyle 16)
     new = fixedWidthNew 16
-instance (Integral i) => Interpret NInt16 i where
+instance Interpret NInt16 Int16 where
     interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
 instance NVar NInt32 where
     toVars (NInt32 vars) = vars
     fromVars = NInt32 . (makeCorrectLength arithmeticStyle 32)
     new = fixedWidthNew 32
-instance (Integral i) => Interpret NInt32 i where
+instance Interpret NInt32 Int32 where
     interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
 instance NVar NInt64 where
     toVars (NInt64 vars) = vars
     fromVars = NInt64 . (makeCorrectLength arithmeticStyle 64)
     new = fixedWidthNew 64
-instance (Integral i) => Interpret NInt64 i where
+instance Interpret NInt64 Int64 where
     interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
 instance NVar NInteger where
     toVars (NInteger vars) = vars
     fromVars = NInteger
     new = error "Use newNInteger to create an NInteger with a specific width"
-instance (Integral i) => Interpret NInteger i where
+instance Interpret NInteger Integer where
     interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
 
 fixedWidthNew width = do
@@ -160,28 +160,28 @@ instance NVar NWord8 where
     toVars (NWord8 vars) = (makeCorrectLength logicalStyle 9 vars)
     fromVars = NWord8 . (makeCorrectLength logicalStyle 8)
     new = fixedWidthNew 8
-instance (Integral i) => Interpret NWord8 i where
+instance Interpret NWord8 Word8 where
     interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
 
 instance NVar NWord16 where
     toVars (NWord16 vars) = (makeCorrectLength logicalStyle 17 vars)
     fromVars = NWord16 . (makeCorrectLength logicalStyle 16)
     new = fixedWidthNew 16
-instance (Integral i) => Interpret NWord16 i where
+instance Interpret NWord16 Word16 where
     interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
 
 instance NVar NWord32 where
     toVars (NWord32 vars) = (makeCorrectLength logicalStyle 33 vars)
     fromVars = NWord32 . (makeCorrectLength logicalStyle 32)
     new = fixedWidthNew 32
-instance (Integral i) => Interpret NWord32 i where
+instance Interpret NWord32 Word32 where
     interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
 
 instance NVar NWord64 where
     toVars (NWord64 vars) = (makeCorrectLength logicalStyle 65 vars)
     fromVars = NWord64 . (makeCorrectLength logicalStyle 64)
     new = fixedWidthNew 64
-instance (Integral i) => Interpret NWord64 i where
+instance Interpret NWord64 Word64 where
     interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
 
 -- The NIntegral class represents non-deterministic Integral types

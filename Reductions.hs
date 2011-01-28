@@ -54,8 +54,8 @@ pluralityWithRunoffManipulation votes numManipulators target =
       eliminations <- makeEliminations rounds candidates
       firstPlaceScores <- getFirstPlaceScores ballots candRange eliminations rounds
 
-      ntrace "FirstPlaceScores" firstPlaceScores (show::Array (Round, Candidate Int) Integer -> String)
-      ntrace "EliminationData" eliminations $ myTrace 1 (show numManipulators ++ " manipulators for " ++ show target) showEliminationData
+      ntrace "FirstPlaceScores" firstPlaceScores
+      ntrace "EliminationData" eliminations
       manipulatorPairwiseBeatsASAR (drop numNonmanipulators ballots) candidates
       manipulatorPairwiseBeatsTotal (drop numNonmanipulators ballots) candidates
 
@@ -64,9 +64,9 @@ pluralityWithRunoffManipulation votes numManipulators target =
       forM_ candidates $ \c -> do
         victories <- victories candidates firstPlaceScores 0 c
         numVictories <- nsum victories
-        ntrace ("First round victories, candidate " ++ show c) numVictories (show::Integer->String)
+        ntrace ("First round victories, candidate " ++ show c) numVictories
         advances <- (NInteger.fromInteger $ fromIntegral $ numCandidates - 2) `leq` numVictories >>= embedFormula
-        ntrace (show c ++ " advances") advances (show::Bool->String)
+        ntrace (show c ++ " advances") advances
         assert $ makeOpposed advances (eliminations ! (1, c))
 
       -- Second stage elimination: Candidates who lose even once are
@@ -75,9 +75,9 @@ pluralityWithRunoffManipulation votes numManipulators target =
       -- eliminated.
       forM_ candidates $ \c -> do
         losses <- losses candidates firstPlaceScores 1 c
-        ntrace ("Second round losses, candidate " ++ show c) losses (show::[Bool]->String)
+        ntrace ("Second round losses, candidate " ++ show c) losses
         advances <- embedFormula $ fromListForm [[Not loss] | loss <- losses]
-        ntrace (show c ++ " advances") advances (show::Bool->String)
+        ntrace (show c ++ " advances") advances
         assert $ makeOpposed advances (eliminations ! (2, c))
 
       -- Target candidate still remains in round 2, with everyone else
@@ -98,8 +98,8 @@ irvManipulation votes numManipulators target =
       eliminations <- makeEliminations rounds candidates
       firstPlaceScores <- getFirstPlaceScores ballots candRange eliminations rounds
 
-      ntrace "FirstPlaceScores" firstPlaceScores (show::Array (Round, Candidate Int) Integer -> String)
-      ntrace "EliminationData" eliminations $ myTrace 1 (show numManipulators ++ " manipulators for " ++ show target) showEliminationData
+      ntrace "FirstPlaceScores" firstPlaceScores
+      ntrace "EliminationData" eliminations
       manipulatorPairwiseBeatsASAR (drop numNonmanipulators ballots) candidates
       manipulatorPairwiseBeatsTotal (drop numNonmanipulators ballots) candidates
 
@@ -117,16 +117,16 @@ irvManipulation votes numManipulators target =
           onlyOneLeft <- embedFormula $ fromListForm
                          [[(if other == candidate then Not else Merely) $ eliminations ! (round, other)]
                                | other <- candidates]
-          ntrace "Only one left" onlyOneLeft (show::Bool->String)
+          ntrace "Only one left" onlyOneLeft
 
           -- Advance this candidate it beat someone who's not
           -- eliminatoed or if it's the only one left.
           nonEliminatedVictories <- embedFormulas $
                                     [fromListForm [[Merely victory], [Not $ eliminations ! (round, opponent)]]
                                      | (victory, opponent) <- zip victories (delete candidate candidates)]
-          ntrace ("Round " ++ show round ++ " non-elim victories, " ++ show candidate) nonEliminatedVictories (show::[Bool]->String)
+          ntrace ("Round " ++ show round ++ " non-elim victories, " ++ show candidate) nonEliminatedVictories
           advances <- embedFormula $ fromListForm [map Merely $ onlyOneLeft : nonEliminatedVictories]
-          ntrace (show candidate ++ " advances") advances (show::Bool->String)
+          ntrace (show candidate ++ " advances") advances
           assert $ makeOpposed advances (eliminations ! (round+1, candidate)) }
 
       -- Target candidate still remains after |C| - 1 rounds, with
@@ -146,9 +146,9 @@ copelandManipulation tieValue votes numManipulators target =
       manipulatorPairwiseBeatsTotal (drop numNonmanipulators ballots) candidates
 
       pairwiseScores <- getPairwiseScores candRange ballots
-      ntrace "Pairwise Scores" pairwiseScores (show::Array (Candidate Int, Candidate Int) Integer -> String)
+      ntrace "Pairwise Scores" pairwiseScores
       copelandScores <- getCopelandScores tieValue pairwiseScores candRange
-      ntrace "Copeland Scores" copelandScores (show::Array (Candidate Int) Integer -> String)
+      ntrace "Copeland Scores" copelandScores
 
       forM_ (delete target candidates) $ \opponent -> do
         (copelandScores ! target) `gt` (copelandScores ! opponent) >>= assert

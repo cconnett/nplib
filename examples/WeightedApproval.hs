@@ -15,7 +15,7 @@ weightedApproval m r scores weights = do
     scoreAdded <- sequence [mul1bit (NInteger.fromInteger (weights !! fromIntegral (i-1)) :: NInteger) (x ! (i, j)) | i <- [1..m]]
     manipulationScore <- nsum scoreAdded
     manipulationScore `leq` (NInteger.fromInteger $ head scores - scores !! fromIntegral (j-1) + sum (take (fromIntegral m) weights)) >>= assert
-    ntrace ("score " ++ show j) manipulationScore (show :: Integer -> String)
+    ntrace ("score " ++ show j) manipulationScore
   return x
 
 main = do

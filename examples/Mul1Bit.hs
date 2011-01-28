@@ -3,6 +3,7 @@ module Main where
 import SatSolvers
 import NPLib
 import NInteger
+import Data.Int
 
 --multiplication :: NIntegral k => NProgramComputation (k, k, k)
 mul1 :: NProgramComputation (NInt8, NInt8)
@@ -14,5 +15,5 @@ mul1 = do
 
 main = do
   let (worked, (a',z')) = evalNProgram Minisat mul1
-  putStrLn $ "a': " ++ show (a'::Int)
-  putStrLn $ "z': " ++ show (z'::Int)
+  putStrLn $ "a': " ++ show (a'::Int8)
+  putStrLn $ "z': " ++ show (z'::Int8)

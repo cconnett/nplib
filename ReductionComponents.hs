@@ -271,7 +271,7 @@ getCopelandScores tieValue pairwiseScores candRange =
                   vicPrize <- mul1bit (NInteger.fromInteger winPoints) isVic;
                   tiePrize <- mul1bit (NInteger.fromInteger tiePoints) isTie;
                   value <- add vicPrize tiePrize;
-                  ntrace ("Prize for " ++ show c ++ " against " ++ show d) value (show::Integer->String);
+                  ntrace ("Prize for " ++ show c ++ " against " ++ show d) value;
                   return value;
                 };
       nsum (values :: [NInteger])

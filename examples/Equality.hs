@@ -3,6 +3,7 @@ module Main where
 import SatSolvers
 import NPLib
 import NInteger
+import Data.Int
 
 equality :: NProgramComputation (NInt16, NInt16)
 equality = do
@@ -13,5 +14,5 @@ equality = do
 
 main = do
   let (worked, (a,b)) = evalNProgram Minisat equality
-  putStrLn $ "a: " ++ show (a::Int)
-  putStrLn $ "b: " ++ show (b::Int)
+  putStrLn $ "a: " ++ show (a::Int16)
+  putStrLn $ "b: " ++ show (b::Int16)

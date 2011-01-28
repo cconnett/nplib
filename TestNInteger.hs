@@ -7,9 +7,10 @@ import SAT
 import NPLib
 import NInteger
 import Test.QuickCheck
+import Control.Arrow
 import Data.Maybe
 import Data.Bits
-import Data.Word
+import Data.Int
 import Debug.Trace
 
 prop_equal ss aa bb =
@@ -52,7 +53,7 @@ prop_lt ss aa bb =
                  )
 
 prop_addition ss aa bb =
-    (aa + bb) == (snd $
+    (aa + bb) == (fromIntegral $ snd $
                   evalNProgram ss (do
                                     let a::NInt8 = NInteger.fromInteger aa
                                     let b::NInt8 = NInteger.fromInteger bb
@@ -60,7 +61,7 @@ prop_addition ss aa bb =
                                     return c)
                  )
 prop_subtraction ss aa bb =
-    (aa - bb) == (snd $
+    (aa - bb) == (fromIntegral $ snd $
                   evalNProgram ss (do
                                     let a::NInt8 = NInteger.fromInteger aa
                                     let b::NInt8 = NInteger.fromInteger bb
@@ -68,7 +69,7 @@ prop_subtraction ss aa bb =
                                     return c)
                  )
 prop_add_1bit ss listOfBool =
-    (length $ filter id listOfBool) == (snd $ evalNProgram ss (add_1bit_prog listOfBool))
+    (length $ filter id listOfBool) == (fromIntegral $ snd $ evalNProgram ss (add_1bit_prog listOfBool))
 add_1bit_prog :: [Bool] -> NProgramComputation NInteger
 add_1bit_prog listOfBool = do
   let x = [if bool then true else false
@@ -76,7 +77,7 @@ add_1bit_prog listOfBool = do
   t <- nsum x
   return t
 prop_negation ss aa =
-    aa == (snd $
+    aa == (fromIntegral $ snd $
            evalNProgram ss (do
                              let negativeA::NInt8 = NInteger.fromInteger (-aa)
                              b::NInt8 <- new
@@ -85,13 +86,14 @@ prop_negation ss aa =
                              return b)
           )
 prop_multiplication ss aa bb =
-    (aa * bb) == (snd $
+    (aa * bb) == (fromIntegral $ snd $
                   evalNProgram ss (do
                                     let a::NInt16 = NInteger.fromInteger aa
                                     let b::NInt16 = NInteger.fromInteger bb
                                     c <- mul a b
                                     return c)
                  )
+    {-
 prop_factor ss cc =
     let factors = (take 2 $ snd $
                    evalAllNProgram ss (do
@@ -100,6 +102,7 @@ prop_factor ss cc =
                                         let c::NInt8 = NInteger.fromInteger cc
                                         c' <- mul a b
                                         equal c c' >>= assert
-                                        return (a,b)) :: [(Integer,Integer)]
+                                        return (a,b))
                   )
-    in all (\(aa, bb) -> (aa * bb) `mod` 256 == cc `mod` 256) factors
+    in all (\(aa, bb) -> (fromIntegral $ aa * bb) `mod` 256 == cc `mod` 256) factors
+-}

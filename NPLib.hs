@@ -72,7 +72,7 @@ assert formula = do
 assertAll :: [Formula] -> NProgramComputation ()
 assertAll = assert . conjoinAll
 
-ntrace tag v show =  do
+ntrace tag v = do
   NProgram f unusedVars traces <- get
   put $ NProgram f unusedVars ((NTrace tag v show):traces)
 
@@ -89,7 +89,7 @@ class NVar v where
 -- The Interpret class allows the interpretation of a (usually) NVar
 -- type into a related deterministic type, given an IntMap Bool of the
 -- assignments to the Vars in the formula it was used in.
-class Interpret v d where
+class Interpret v d | v -> d, d -> v where
     interpret :: v -> IM.IntMap Bool -> d
 
 -- NVar and Interpret instances for Var
@@ -100,11 +100,8 @@ instance NVar Var where
     new = takeSatVar
 instance Interpret Var Bool where
     interpret v answers = answers IM.! v
-instance Interpret Formula Bool where
-    interpret formula answers = formulaSatisfied formula answers
 
 lookupVarAnswers v answers = map (answers IM.!) (toVars v)
-
 -- Interpret instances for tuples up to 15.
 instance (Interpret v1 d1, Interpret v2 d2) => Interpret (v1, v2) (d1, d2) where
     interpret (v1, v2) answers = (interpret v1 answers, interpret v2 answers)
@@ -135,12 +132,13 @@ instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, In
 instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12, Interpret v13 d13, Interpret v14 d14, Interpret v15 d15) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15) where
     interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers, interpret v14 answers, interpret v15 answers)
 
--- Interpret instance for list of interpretables.
-instance (Functor f, Interpret a v) => Interpret (f a) (f v) where
-    interpret vs answers = fmap ((flip interpret) answers) vs
-
-instance (Interpret v ()) where
-    interpret v answers = ()
+-- Interpret instance for lists and arrays of interpretables.
+-- Interpret instances for functors/traversables is incompatible,
+-- because tuples are fmappable/traversable with the wrong meaning.
+instance (Interpret n d) => Interpret [n] [d] where
+    interpret ns model = map ((flip interpret) model) ns
+instance (Ix i, Interpret n d) => Interpret (Array i n) (Array i d) where
+    interpret na model = fmap ((flip interpret) model) na
 
 -- Solving NPrograms with a SAT Solver
 solveNProgram :: (a -> Model -> b) -> SatSolver -> NProgramComputation a -> (Maybe Bool, [b])
