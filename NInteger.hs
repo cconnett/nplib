@@ -39,7 +39,7 @@ module NInteger
     ,NInteger
     ,newNInteger
 
-    ,NVar
+    ,Nondeterministic
     ,toVars
     ,fromVars
     ,new
@@ -98,41 +98,41 @@ newtype NWord16 = NWord16 [Var] deriving (Show, Read)
 newtype NWord32 = NWord32 [Var] deriving (Show, Read)
 newtype NWord64 = NWord64 [Var] deriving (Show, Read)
 
--- NVar and Interpret instances for signed types
-instance NVar NInt8 where
+-- Nondeterministic and Interpret instances for signed types
+instance Nondeterministic NInt8 where
     toVars (NInt8 vars) = vars
     fromVars = NInt8 . (makeCorrectLength arithmeticStyle 8)
     new = fixedWidthNew 8
 instance Interpret NInt8 Int8 where
-    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asSignedInteger . (varsUnderModel model)
 
-instance NVar NInt16 where
+instance Nondeterministic NInt16 where
     toVars (NInt16 vars) = vars
     fromVars = NInt16 . (makeCorrectLength arithmeticStyle 16)
     new = fixedWidthNew 16
 instance Interpret NInt16 Int16 where
-    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asSignedInteger . (varsUnderModel model)
 
-instance NVar NInt32 where
+instance Nondeterministic NInt32 where
     toVars (NInt32 vars) = vars
     fromVars = NInt32 . (makeCorrectLength arithmeticStyle 32)
     new = fixedWidthNew 32
 instance Interpret NInt32 Int32 where
-    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asSignedInteger . (varsUnderModel model)
 
-instance NVar NInt64 where
+instance Nondeterministic NInt64 where
     toVars (NInt64 vars) = vars
     fromVars = NInt64 . (makeCorrectLength arithmeticStyle 64)
     new = fixedWidthNew 64
 instance Interpret NInt64 Int64 where
-    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asSignedInteger . (varsUnderModel model)
 
-instance NVar NInteger where
+instance Nondeterministic NInteger where
     toVars (NInteger vars) = vars
     fromVars = NInteger
     new = error "Use newNInteger to create an NInteger with a specific width"
 instance Interpret NInteger Integer where
-    interpret v = fromIntegral . asSignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asSignedInteger . (varsUnderModel model)
 
 fixedWidthNew width = do
   vars <- takeSatVars width
@@ -155,37 +155,37 @@ prop_asSignedInteger a =
 prop_asUnsignedInteger (a::Integer) = a > 0 ==>
     a == fromIntegral (asUnsignedInteger (map (Bits.testBit a) [31,30..0]))
 
--- NVar and Interpret instances for unsigned types
-instance NVar NWord8 where
+-- Nondeterministic and Interpret instances for unsigned types
+instance Nondeterministic NWord8 where
     toVars (NWord8 vars) = (makeCorrectLength logicalStyle 9 vars)
     fromVars = NWord8 . (makeCorrectLength logicalStyle 8)
     new = fixedWidthNew 8
 instance Interpret NWord8 Word8 where
-    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asUnsignedInteger . (varsUnderModel model)
 
-instance NVar NWord16 where
+instance Nondeterministic NWord16 where
     toVars (NWord16 vars) = (makeCorrectLength logicalStyle 17 vars)
     fromVars = NWord16 . (makeCorrectLength logicalStyle 16)
     new = fixedWidthNew 16
 instance Interpret NWord16 Word16 where
-    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asUnsignedInteger . (varsUnderModel model)
 
-instance NVar NWord32 where
+instance Nondeterministic NWord32 where
     toVars (NWord32 vars) = (makeCorrectLength logicalStyle 33 vars)
     fromVars = NWord32 . (makeCorrectLength logicalStyle 32)
     new = fixedWidthNew 32
 instance Interpret NWord32 Word32 where
-    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asUnsignedInteger . (varsUnderModel model)
 
-instance NVar NWord64 where
+instance Nondeterministic NWord64 where
     toVars (NWord64 vars) = (makeCorrectLength logicalStyle 65 vars)
     fromVars = NWord64 . (makeCorrectLength logicalStyle 64)
     new = fixedWidthNew 64
 instance Interpret NWord64 Word64 where
-    interpret v = fromIntegral . asUnsignedInteger . lookupVarAnswers v
+    interpret model = fromIntegral . asUnsignedInteger . (varsUnderModel model)
 
 -- The NIntegral class represents non-deterministic Integral types
-class (NVar k) => NIntegral k where
+class (Nondeterministic k) => NIntegral k where
     fromInteger :: Integer -> k
     extendTo :: Int -> k -> [Var]
     fromNIntegral :: (NIntegral j) => k -> j
@@ -200,7 +200,7 @@ m a
 mPos = (+1) . floor . (logBase 2) . fromIntegral
 mNeg = (+0) . ceiling . (logBase 2) . fromIntegral
 
-width :: (NVar v) => v -> Int
+width :: (NIntegral n) => n -> Int
 width = length . toVars
 
 -- Produces an NIntegral representing the value in the Integer a,

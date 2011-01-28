@@ -12,7 +12,7 @@ module NPLib
     ,assertAll
     ,ntrace
 
-    ,NVar
+    ,Nondeterministic
     ,toVars
     ,fromVars
     ,true
@@ -21,7 +21,7 @@ module NPLib
 
     ,Interpret
     ,interpret
-    ,lookupVarAnswers
+    ,varsUnderModel
 
     ,execNProgram
     ,evalNProgram
@@ -40,7 +40,7 @@ import SAT
 import SatSolvers
 import qualified Data.IntMap as IM
 
-data NTrace = forall v d. (Interpret v d) => NTrace String v (d -> String)
+data NTrace = forall n d. (Interpret n d) => NTrace String n (d -> String)
 
 data NProgram = NProgram Formula [Var] [NTrace]
 instance Show NProgram where
@@ -76,72 +76,74 @@ ntrace tag v = do
   NProgram f unusedVars traces <- get
   put $ NProgram f unusedVars ((NTrace tag v show):traces)
 
--- The NVar class are types that represent complex non-deterministic
+-- The class of Nondeterministic types represent non-deterministic
 -- structures.
-class NVar v where
+class Nondeterministic n where
     -- Convert to and from a list of Vars.
-    toVars :: v -> [Var]
-    fromVars :: [Var] -> v
+    toVars :: n -> [Var]
+    fromVars :: [Var] -> n
 
     -- Statefully allocate new variables
-    new :: NProgramComputation v
+    new :: NProgramComputation n
 
--- The Interpret class allows the interpretation of a (usually) NVar
--- type into a related deterministic type, given an IntMap Bool of the
--- assignments to the Vars in the formula it was used in.
-class Interpret v d | v -> d, d -> v where
-    interpret :: v -> IM.IntMap Bool -> d
+-- The Interpret class allows the interpretation of a Nondeterministic
+-- type into a related deterministic type, given a model of the
+-- formula it was used in.
+class Interpret n d | n -> d, d -> n where
+    interpret :: Model -> n -> d
 
--- NVar and Interpret instances for Var
-instance NVar Var where
+-- Nondeterministic and Interpret instances for Var
+instance Nondeterministic Var where
     toVars var = [var]
     fromVars vars = last vars
 
     new = takeSatVar
 instance Interpret Var Bool where
-    interpret v answers = answers IM.! v
+    interpret model n = model IM.! n
 
-lookupVarAnswers v answers = map (answers IM.!) (toVars v)
+varsUnderModel :: (Nondeterministic n) => Model -> n -> [Bool]
+varsUnderModel model n = map (model IM.!) (toVars n)
+
 -- Interpret instances for tuples up to 15.
-instance (Interpret v1 d1, Interpret v2 d2) => Interpret (v1, v2) (d1, d2) where
-    interpret (v1, v2) answers = (interpret v1 answers, interpret v2 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3) => Interpret (v1, v2, v3) (d1, d2, d3) where
-    interpret (v1, v2, v3) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4) => Interpret (v1, v2, v3, v4) (d1, d2, d3, d4) where
-    interpret (v1, v2, v3, v4) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5) => Interpret (v1, v2, v3, v4, v5) (d1, d2, d3, d4, d5) where
-    interpret (v1, v2, v3, v4, v5) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6) => Interpret (v1, v2, v3, v4, v5, v6) (d1, d2, d3, d4, d5, d6) where
-    interpret (v1, v2, v3, v4, v5, v6) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7) => Interpret (v1, v2, v3, v4, v5, v6, v7) (d1, d2, d3, d4, d5, d6, d7) where
-    interpret (v1, v2, v3, v4, v5, v6, v7) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8) (d1, d2, d3, d4, d5, d6, d7, d8) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9) (d1, d2, d3, d4, d5, d6, d7, d8, d9) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12, Interpret v13 d13) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12, Interpret v13 d13, Interpret v14 d14) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers, interpret v14 answers)
-instance (Interpret v1 d1, Interpret v2 d2, Interpret v3 d3, Interpret v4 d4, Interpret v5 d5, Interpret v6 d6, Interpret v7 d7, Interpret v8 d8, Interpret v9 d9, Interpret v10 d10, Interpret v11 d11, Interpret v12 d12, Interpret v13 d13, Interpret v14 d14, Interpret v15 d15) => Interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15) where
-    interpret (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) answers = (interpret v1 answers, interpret v2 answers, interpret v3 answers, interpret v4 answers, interpret v5 answers, interpret v6 answers, interpret v7 answers, interpret v8 answers, interpret v9 answers, interpret v10 answers, interpret v11 answers, interpret v12 answers, interpret v13 answers, interpret v14 answers, interpret v15 answers)
+instance (Interpret n1 d1, Interpret n2 d2) => Interpret (n1, n2) (d1, d2) where
+    interpret model (n1, n2) = (interpret model n1, interpret model n2)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3) => Interpret (n1, n2, n3) (d1, d2, d3) where
+    interpret model (n1, n2, n3) = (interpret model n1, interpret model n2,  interpret model n3)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4) => Interpret (n1, n2, n3, n4) (d1, d2, d3, d4) where
+    interpret model (n1, n2, n3, n4) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5) => Interpret (n1, n2, n3, n4, n5) (d1, d2, d3, d4, d5) where
+    interpret model (n1, n2, n3, n4, n5) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6) => Interpret (n1, n2, n3, n4, n5, n6) (d1, d2, d3, d4, d5, d6) where
+    interpret model (n1, n2, n3, n4, n5, n6) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7) => Interpret (n1, n2, n3, n4, n5, n6, n7) (d1, d2, d3, d4, d5, d6, d7) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8) (d1, d2, d3, d4, d5, d6, d7, d8) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8, Interpret n9 d9) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8, n9) (d1, d2, d3, d4, d5, d6, d7, d8, d9) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8, n9) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8,  interpret model n9)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8, Interpret n9 d9, Interpret n10 d10) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8,  interpret model n9,  interpret model n10)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8, Interpret n9 d9, Interpret n10 d10, Interpret n11 d11) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8,  interpret model n9,  interpret model n10,  interpret model n11)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8, Interpret n9 d9, Interpret n10 d10, Interpret n11 d11, Interpret n12 d12) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8,  interpret model n9,  interpret model n10,  interpret model n11,  interpret model n12)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8, Interpret n9 d9, Interpret n10 d10, Interpret n11 d11, Interpret n12 d12, Interpret n13 d13) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8,  interpret model n9,  interpret model n10,  interpret model n11,  interpret model n12,  interpret model n13)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8, Interpret n9 d9, Interpret n10 d10, Interpret n11 d11, Interpret n12 d12, Interpret n13 d13, Interpret n14 d14) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8,  interpret model n9,  interpret model n10,  interpret model n11,  interpret model n12,  interpret model n13,  interpret model n14)
+instance (Interpret n1 d1, Interpret n2 d2, Interpret n3 d3, Interpret n4 d4, Interpret n5 d5, Interpret n6 d6, Interpret n7 d7, Interpret n8 d8, Interpret n9 d9, Interpret n10 d10, Interpret n11 d11, Interpret n12 d12, Interpret n13 d13, Interpret n14 d14, Interpret n15 d15) => Interpret (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15) (d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15) where
+    interpret model (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15) = (interpret model n1,  interpret model n2,  interpret model n3,  interpret model n4,  interpret model n5,  interpret model n6,  interpret model n7,  interpret model n8,  interpret model n9,  interpret model n10,  interpret model n11,  interpret model n12,  interpret model n13,  interpret model n14,  interpret model n15)
 
 -- Interpret instance for lists and arrays of interpretables.
 -- Interpret instances for functors/traversables is incompatible,
 -- because tuples are fmappable/traversable with the wrong meaning.
 instance (Interpret n d) => Interpret [n] [d] where
-    interpret ns model = map ((flip interpret) model) ns
+    interpret = map . interpret
 instance (Ix i, Interpret n d) => Interpret (Array i n) (Array i d) where
-    interpret na model = fmap ((flip interpret) model) na
+    interpret = fmap . interpret
 
 -- Solving NPrograms with a SAT Solver
-solveNProgram :: (a -> Model -> b) -> SatSolver -> NProgramComputation a -> (Maybe Bool, [b])
+solveNProgram :: (Model -> n -> d) -> SatSolver -> NProgramComputation n -> (Maybe Bool, [d])
 solveNProgram interpret ss nprogramComputation =
     let (theNVars, NProgram formula unusedVars traces) = runState nprogramComputation emptyNProgram
         numVars = head unusedVars - 1
@@ -150,25 +152,25 @@ solveNProgram interpret ss nprogramComputation =
          Just []     -> (Just False, error "Unsatisfiable formula") -- Just [] -- error "Unsatisfiable formula"
          Just models -> let tracedModels = map (traceTraces traces) models in
                         ((if null traces then id else seq (head tracedModels)) (Just True),
-                         map (interpret theNVars) tracedModels)
+                         map ((flip interpret) theNVars) tracedModels)
          Nothing     -> (Nothing, error "Solve time limit exceeded")
 
-traceTraces :: [NTrace] -> (IM.IntMap Bool) -> (IM.IntMap Bool)
+traceTraces :: [NTrace] -> Model -> Model
 traceTraces traces model =
     if null traces then model else
-    myTrace 1 (concatMap (\(NTrace tag v show) ->
+    myTrace 1 (concatMap (\(NTrace tag n show) ->
                           seq model $
-                          "NTrace: " ++ tag ++ " = " ++ show (interpret v model) ++ "\n") (reverse traces))
+                          "NTrace: " ++ tag ++ " = " ++ show (interpret model n) ++ "\n") (reverse traces))
     model
 
-evalAllNProgram :: (Interpret a b) => SatSolver -> NProgramComputation a -> (Maybe Bool, [b])
+evalAllNProgram :: (Interpret n d) => SatSolver -> NProgramComputation n -> (Maybe Bool, [d])
 evalAllNProgram = solveNProgram interpret
 
-evalNProgram :: (Interpret a b) => SatSolver -> NProgramComputation a -> (Maybe Bool, b)
+evalNProgram :: (Interpret n d) => SatSolver -> NProgramComputation n -> (Maybe Bool, d)
 evalNProgram ss nprogramComputation =
     (second head) $ evalAllNProgram ss nprogramComputation
 
-execNProgram :: SatSolver -> NProgramComputation a -> Maybe Bool
+execNProgram :: SatSolver -> NProgramComputation n -> Maybe Bool
 execNProgram ss nprogramComputation =
     fst $ solveNProgram (const (const ())) ss nprogramComputation
 
