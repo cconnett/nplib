@@ -16,7 +16,6 @@ module Embeddings
 import Data.List
 import SAT
 import NPLib
-import Control.Monad.State
 
 class Cond c where
     condify :: c -> NProgramComputation Var

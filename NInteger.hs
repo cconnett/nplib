@@ -75,7 +75,7 @@ import SAT
 import Embeddings
 
 import Prelude hiding (negate)
-import Control.Monad.State
+import Control.Monad
 import Control.Arrow
 import Data.Bits ((.|.))
 import qualified Data.Bits as Bits

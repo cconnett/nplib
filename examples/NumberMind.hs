@@ -1,7 +1,7 @@
 module Main where
 
 import NInteger
-import Control.Monad.State
+import Control.Monad
 import SatSolvers
 import NPLib
 import Embeddings

@@ -3,4 +3,4 @@ include_rules
 include generated_Tupdeps
 .gitignore
 
-: foreach Addition.hs Equality.hs Mul1Bit.hs Multiplication.hs NSumDemo.hs UnweightedBorda.hs WeightedApproval.hs | ../*.o *.o |> !LINK |>
+: foreach Addition.hs Equality.hs Mul1Bit.hs Multiplication.hs NSumDemo.hs NumberMind.hs UnweightedBorda.hs WeightedApproval.hs | ../*.o *.o |> !LINK |>

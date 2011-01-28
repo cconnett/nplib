@@ -1,6 +1,6 @@
 module Reductions where
 
-import Control.Monad.State
+import Control.Monad
 import Data.Array
 import Data.Ix
 import Data.List

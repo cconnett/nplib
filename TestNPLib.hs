@@ -1,6 +1,5 @@
 module TestNPLib where
 
-import Control.Monad.State
 import Data.Maybe
 import Elections
 import Embeddings
