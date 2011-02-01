@@ -17,8 +17,8 @@ import Test.QuickCheck
 prop_doubleNegation prop = prop == (neg $ neg $ prop)
 
 prop_if' ss a b =
-    (a==b) == (snd $
-               evalInstance ss (do
+    (a==b) == (head . solutions $
+               buildInstance ss (do
                                  cond::Var <- new
                                  let a'::NInteger = NInteger.fromInteger a
                                  let b'::NInteger = NInteger.fromInteger b
@@ -32,16 +32,16 @@ prop_if' ss a b =
                                  return cond)
               )
 prop_interpretInteger ss a =
-    a == (snd $
-          evalInstance ss (do
+    a == (head . solutions $
+          buildInstance ss (do
                             let a'::NInteger = NInteger.fromInteger a
                             b'::NInteger <- newNInteger (width a')
                             a'`equal`b' >>= assert
                             return b')
          )
 prop_deny ss a b =
-    (a/=b) == (fromJust $
-               execInstance ss (do
+    (a/=b) == (satisfiable $
+               buildInstance ss (do
                                  let a'::NInteger = NInteger.fromInteger a
                                  let b'::NInteger = NInteger.fromInteger b
                                  eq <- a'`equal`b'

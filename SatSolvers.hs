@@ -4,6 +4,8 @@ module SatSolvers
     (solveAll
      ,parse
      ,SatSolver(ZChaff,RSat,Minisat,Clasp)
+     ,Model
+     ,SolverComments
     )
     where
 
@@ -29,14 +31,16 @@ import Tracing
 
 solversHome = "./sat/"
 
--- Solve a formula, and return a Maybe list of IntMaps containing the
--- truth assignments of the variables.  If the formula had no
--- solutions, Just [] is returned.  If the *first* solution timed out,
--- Nothing is returned.  Otherwise, (Just) a list of the non-timed out
--- solutions is returned.
+type Model = IM.IntMap Bool
+type SolverComments = M.Map String String
+
+-- Solve a formula, and return (the satisfiability status, Maybe list
+-- of Models containing the truth assignments of the variables,
+-- miscellaneous implementation specific comments from the solver
+-- about the solve that produced each model).
 
 {-# NOINLINE solveAll #-}
-solveAll :: SatSolver -> (Int, Formula) -> Maybe [IM.IntMap Bool]
+solveAll :: SatSolver -> (Int, Formula) -> (Maybe Bool, [Model], [SolverComments])
 solveAll ss (numVars, formula) = unsafePerformIO $ runAll ss (numVars, formula)
 
 data SatSolver = ZChaff | RSat | Minisat | Clasp
@@ -46,33 +50,37 @@ instance Arbitrary SatSolver where
     coarbitrary = undefined
 
 run1 :: SatSolver -> String -> IO (String, String)
-run1 ZChaff = zchaffRun1
-run1 RSat = rsatRun1
-run1 Minisat = minisatRun1
+--run1 ZChaff = zchaffRun1
+--run1 RSat = rsatRun1
+--run1 Minisat = minisatRun1
 run1 Clasp = claspRun1
 
-parse :: SatSolver -> (String, String) -> (Maybe Bool, IM.IntMap Bool)
-parse ZChaff = zchaffParse
-parse RSat = rsatParse
-parse Minisat = minisatParse
+parse :: SatSolver -> (String, String) -> (Maybe Bool, Maybe Model, SolverComments)
+--parse ZChaff = zchaffParse
+--parse RSat = rsatParse
+--parse Minisat = minisatParse
 parse Clasp = claspParse
 
+runAll :: SatSolver -> (Int, Formula) -> IO (Maybe Bool, [Model], [SolverComments])
 runAll ss (numVars, formula) = do
   solutions <- runAll' ss (numVars, formula)
   return $ case solutions of
-             (Just False, _) : _ -> Just []
-             (Nothing, _) : _ -> Nothing
-             (Just True, _) : _ -> Just $ map snd $ takeWhile ((==Just True) . fst) solutions
+             (Just False, _, comments) : _ -> (Just False, [], [comments])
+             (Nothing   , _, comments) : _ -> (Nothing, [], [comments])
+             (Just True , _, comments) : _ -> (Just True,
+                                              catMaybes $ map (\(s,m,c) -> m) solutions,
+                                              map (\(s,m,c) -> c) solutions)
 
+runAll' :: SatSolver -> (Int, Formula) -> IO [(Maybe Bool, Maybe Model, SolverComments)]
 runAll' ss (numVars, formula) = do
   firstOutput <- myTrace 1 (show numVars ++ " variables, " ++
                             show (SAT.numClauses formula) ++ " clauses.\n") $
                           run1 ss (toDIMACS (numVars, formula))
   let firstSolution = parse ss firstOutput
-  let restSolutions = runAll' ss (numVars, conjoin formula (invalidateModel (snd firstSolution)))
+  let restSolutions = runAll' ss (numVars, conjoin formula (invalidateModel $ (\(s,Just m,c) -> m) firstSolution))
   return $ firstSolution : (unsafePerformIO restSolutions)
 
-invalidateModel :: (IM.IntMap Bool) -> Formula
+invalidateModel :: Model -> Formula
 invalidateModel model = fromListForm
  [[if assignedTrue then
        Not var else
@@ -98,7 +106,7 @@ zchaffRun1 dimacs = do
   return (readResult, "")
 
 -- Parse the output of zchaff into answers about the formula.
-zchaffParse :: (String, String) -> (Maybe Bool, IM.IntMap Bool)
+zchaffParse :: (String, String) -> (Maybe Bool, Model)
 zchaffParse (stdout, assignmentFile) =
     let assignmentLine = (lines stdout) !! 5
         assignmentStrings = words assignmentLine
@@ -130,7 +138,7 @@ rsatRun1 dimacs = do
   return (readResult, "")
 
 -- Parse the output of rsat into answers about the formula.
-rsatParse :: (String, String) -> (Maybe Bool, IM.IntMap Bool)
+rsatParse :: (String, String) -> (Maybe Bool, Model)
 rsatParse (stdout, assignmentFile) =
     let assignmentLine = last $ lines stdout
         assignmentStrings = tail $ words assignmentLine
@@ -178,7 +186,7 @@ minisatRealRun dimacsName stdoutName solutionName = do
                         error ("Minisat failure: " ++ show status)
 
 -- Parse the output of minisat into answers about the formula.
-minisatParse :: (String, String) -> (Maybe Bool, IM.IntMap Bool)
+minisatParse :: (String, String) -> (Maybe Bool, Model)
 minisatParse (stdout, assignmentFile) =
     let assignmentLine = (lines assignmentFile) !! 1
         assignmentStrings = words assignmentLine
@@ -221,7 +229,7 @@ claspRealRun dimacsName stdoutName = do
                         error ("Clasp failure: " ++ show status)
 
 -- Parse the output of clasp into answers about the formula.
-claspParse :: (String, String) -> (Maybe Bool, IM.IntMap Bool)
+claspParse :: (String, String) -> (Maybe Bool, Maybe Model, SolverComments)
 claspParse (stdout, assignmentFile) =
     let assignmentLines = filter ((=="v") . take 1) (lines stdout)
         assignmentStrings = concatMap (tail . words) assignmentLines
@@ -232,7 +240,9 @@ claspParse (stdout, assignmentFile) =
                 _ | stdout =~ "SATISFIABLE" -> Just True
                 _ | otherwise -> Nothing
     in (sat, case sat of
-               Just True -> IM.fromList $
+               Just True -> Just $ IM.fromList $
                            [(var, True) | var <- trues] ++
                            [(var, False) | var <- falses]
-               _ -> error "No solution")
+               _ -> Nothing,
+       M.empty -- TODO parse out the comments and return them in a map
+       )

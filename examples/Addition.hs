@@ -17,7 +17,7 @@ addition = do
   return (a, b, c)
 
 main = do
-  let (worked, (a,b,c)) = evalInstance RSat addition
+  let (a,b,c) = head . solutions $ buildInstance Clasp addition
   putStrLn $ "a: " ++ show a
   putStrLn $ "b: " ++ show b
   putStrLn $ "c: " ++ show c

@@ -15,6 +15,6 @@ nsumDemo = do
   return (x, sum)
 
 main = do
-  let (worked, (x, sum)) = evalInstance Minisat nsumDemo
+  let (x, sum) = head . solutions $ buildInstance Minisat nsumDemo
   putStrLn $ "x: " ++ show x
   putStrLn $ "sum: " ++ show sum

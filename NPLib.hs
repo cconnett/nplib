@@ -6,6 +6,17 @@
 
 module NPLib
     (InstanceBuilder
+    ,buildInstance
+
+    ,Instance
+    ,satisfiability
+    ,satisfiable
+    ,solutions
+    ,formula
+    ,models
+    ,solverUsed
+    ,comments
+
     ,takeSatVar
     ,takeSatVars
     ,assert
@@ -23,10 +34,6 @@ module NPLib
     ,interpret
     ,varsUnderModel
 
-    ,execInstance
-    ,evalInstance
-    ,evalAllInstance
-
     ,prop_assertConjoinShow
     )
     where
@@ -39,42 +46,61 @@ import Tracing
 import SAT
 import SatSolvers
 import qualified Data.IntMap as IM
+import qualified Data.Map as M
 
 data NTrace = forall n d. (Interpret n d) => NTrace String n (d -> String)
 
-data Instance = Instance Formula [Var] [NTrace]
-instance Show Instance where
-    show (Instance formula _ _) = show formula
+data Instance n = Instance {
+      satisfiability :: Maybe Bool,
+      formula :: Formula,
+      models :: [Model],
+      solverUsed :: SatSolver,
+      comments :: [SolverComments],
+      _NVars :: n
+    }
+satisfiable inst = case satisfiability inst of
+                     Just True -> True
+                     Just False -> False
+                     Nothing -> False
+solutions :: forall n d. (Interpret n d) => Instance n -> [d]
+solutions inst = map ((flip interpret) (_NVars inst)) (models inst)
 
-type InstanceBuilder a = State Instance a
-type Model = IM.IntMap Bool
+data IncompleteInstance = IncompleteInstance {
+      formula' :: Formula,
+      nextUnusedVar :: Var,
+      traces :: [NTrace]
+    }
+instance Show IncompleteInstance where
+    show iinst = show (formula' iinst, nextUnusedVar iinst)
+type InstanceBuilder n = State IncompleteInstance n
 
 -- Empty program has first and second variables as a reference false
 -- and true respectively.
-emptyInstance :: Instance
-emptyInstance = Instance (fromListForm [[Not 1], [Merely 2]]) [3..] []
-
+emptyInstance :: IncompleteInstance
+emptyInstance = IncompleteInstance { formula' = fromListForm [[Not false], [Merely true]],
+                                  nextUnusedVar = true + 1,
+                                  traces = []}
 false = 1 :: Var
 true = 2 :: Var
 
 takeSatVar :: InstanceBuilder Var
 takeSatVar = do
-  Instance formula unusedVars traces <- get
-  put $ Instance formula (tail unusedVars) traces
-  return $ head unusedVars
+  inst <- get
+  put $ inst { nextUnusedVar = nextUnusedVar inst + 1 }
+  return $ nextUnusedVar inst
 
 takeSatVars n = replicateM n takeSatVar
 
 assert :: Formula -> InstanceBuilder ()
-assert formula = do
-  Instance f unusedVars traces <- get
-  put $ Instance (conjoin f formula) unusedVars traces
+assert newFormula = do
+  inst <- get
+  put $ inst { formula' = conjoin (formula' inst) newFormula }
 assertAll :: [Formula] -> InstanceBuilder ()
 assertAll = assert . conjoinAll
 
-ntrace tag v = do
-  Instance f unusedVars traces <- get
-  put $ Instance f unusedVars ((NTrace tag v show):traces)
+ntrace tag n = do
+  inst <- get
+  put $ inst { traces = (NTrace tag n show) : traces inst }
 
 -- The class of Nondeterministic types represent non-deterministic
 -- structures.
@@ -100,6 +126,8 @@ instance Nondeterministic Var where
     new = takeSatVar
 instance Interpret Var Bool where
     interpret model n = model IM.! n
+instance Interpret () () where
+    interpret model () = ()
 
 varsUnderModel :: (Nondeterministic n) => Model -> n -> [Bool]
 varsUnderModel model n = map (model IM.!) (toVars n)
@@ -143,17 +171,19 @@ instance (Ix i, Interpret n d) => Interpret (Array i n) (Array i d) where
     interpret = fmap . interpret
 
 -- Solving Instances with a SAT Solver
-solveInstance :: (Model -> n -> d) -> SatSolver -> InstanceBuilder n -> (Maybe Bool, [d])
-solveInstance interpret ss instanceBuilder =
-    let (theNVars, Instance formula unusedVars traces) = runState instanceBuilder emptyInstance
-        numVars = head unusedVars - 1
-        results = solveAll ss (numVars, formula)
-    in case results of
-         Just []     -> (Just False, error "Unsatisfiable formula") -- Just [] -- error "Unsatisfiable formula"
-         Just models -> let tracedModels = map (traceTraces traces) models in
-                        ((if null traces then id else seq (head tracedModels)) (Just True),
-                         map ((flip interpret) theNVars) tracedModels)
-         Nothing     -> (Nothing, error "Solve time limit exceeded")
+buildInstance :: (Interpret n d) => SatSolver -> InstanceBuilder n -> Instance n
+buildInstance ss instanceBuilder =
+    let (theNVars, IncompleteInstance formula' nextUnusedVar traces) = runState instanceBuilder emptyInstance
+        numVars = nextUnusedVar - 1
+        (satisiablility', models, comments) = solveAll ss (numVars, formula')
+        tracedModels = map (traceTraces traces) models
+    in Instance { satisfiability = satisiablility',
+                  formula = formula',
+                  models = tracedModels,
+                  solverUsed = ss,
+                  comments = comments,
+                  _NVars = theNVars
+                }
 
 traceTraces :: [NTrace] -> Model -> Model
 traceTraces traces model =
@@ -163,19 +193,8 @@ traceTraces traces model =
                           "NTrace: " ++ tag ++ " = " ++ show (interpret model n) ++ "\n") (reverse traces))
     model
 
-evalAllInstance :: (Interpret n d) => SatSolver -> InstanceBuilder n -> (Maybe Bool, [d])
-evalAllInstance = solveInstance interpret
-
-evalInstance :: (Interpret n d) => SatSolver -> InstanceBuilder n -> (Maybe Bool, d)
-evalInstance ss instanceBuilder =
-    (second head) $ evalAllInstance ss instanceBuilder
-
-execInstance :: SatSolver -> InstanceBuilder n -> Maybe Bool
-execInstance ss instanceBuilder =
-    fst $ solveInstance (const (const ())) ss instanceBuilder
-
 {- QuickCheck Properties -}
 
 prop_assertConjoinShow formula =
-    let (Instance baseFormula _ _) = emptyInstance in
+    let (IncompleteInstance baseFormula _ _) = emptyInstance in
     (show $ execState (assert formula) emptyInstance) == (show $ conjoin baseFormula formula)

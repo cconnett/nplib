@@ -14,6 +14,6 @@ mul1 = do
   return (a', z')
 
 main = do
-  let (worked, (a',z')) = evalInstance Minisat mul1
-  putStrLn $ "a': " ++ show (a'::Int8)
-  putStrLn $ "z': " ++ show (z'::Int8)
+  let (a',z') = head . solutions $ buildInstance Minisat mul1
+  putStrLn $ "a': " ++ show a'
+  putStrLn $ "z': " ++ show z'

@@ -28,8 +28,8 @@ assertGuess numbers guess numCorrect = do
   return ()
   assert guess
 main = print $
-       concatMap show $ (snd $
-       evalInstance Minisat $
+       concatMap show $ (head . solutions $
+       buildInstance Clasp $
        numbermind
        [(5616185650518293, 2),
         (3847439647293047, 1),

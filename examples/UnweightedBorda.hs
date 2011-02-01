@@ -33,7 +33,7 @@ main = do
   let m = 2
   let scores = [0,5,5,5,9,9,9]
   let r = fromIntegral $ length scores
-  let (result, x) = evalInstance Clasp (unweightedBorda m scores) :: (Maybe Bool, Array (Integer, Integer, Integer) Bool)
+  let result = satisfiability $ buildInstance Clasp (unweightedBorda m scores)
   print result
   --forM_ (range ((0,2,2),(m,r,r))) $ \(i1,i2,i3) -> when (x ! (i1,i2,i3)) (putStrLn (show i1 ++ " manipulators put " ++ show i2 ++ " in position " ++ show i3))
   return ()

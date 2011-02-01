@@ -19,8 +19,8 @@ multiplication = do
   return (a, b, c)
 
 main = do
-  let (_, solutions) = evalAllInstance Minisat multiplication
-  forM_ solutions $ \(a,b,c) -> do
+  let sols = solutions $ buildInstance Clasp multiplication
+  forM_ sols $ \(a,b,c) -> do
          putStrLn $ "a: " ++ show a
          putStrLn $ "b: " ++ show b
          putStrLn $ "c: " ++ show c

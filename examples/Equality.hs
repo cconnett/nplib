@@ -13,6 +13,6 @@ equality = do
   return (a, b)
 
 main = do
-  let (worked, (a,b)) = evalInstance Minisat equality
+  let (a,b) = head . solutions $ buildInstance Clasp equality
   putStrLn $ "a: " ++ show (a::Int16)
   putStrLn $ "b: " ++ show (b::Int16)
