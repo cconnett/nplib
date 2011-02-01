@@ -3,6 +3,7 @@ module Main where
 import SatSolvers
 import NPLib
 import NInteger
+import Data.Maybe
 
 --addition :: NIntegral k => InstanceBuilder (k, k, k)
 addition :: InstanceBuilder (NWord8, NWord8, NWord8)
@@ -17,7 +18,9 @@ addition = do
   return (a, b, c)
 
 main = do
-  let (a,b,c) = head . solutions $ buildInstance Clasp addition
+  let inst = buildInstance Clasp addition
+  let (a,b,c) = head . solutions $ inst
   putStrLn $ "a: " ++ show a
   putStrLn $ "b: " ++ show b
   putStrLn $ "c: " ++ show c
+  putStrLn $ "Conflicts: " ++ fromJust (lookup "Conflicts" (head $ comments inst))

@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
 import SatSolvers
@@ -5,6 +6,8 @@ import NPLib
 import NInteger
 import Control.Monad
 import Data.Array
+import Data.Maybe
+import System.Random
 
 weightedApproval m r scores weights = do
   x <- liftM (listArray ((1,2),(m,r))) $ takeSatVars $ fromIntegral $ m * (r-1)
@@ -19,10 +22,16 @@ weightedApproval m r scores weights = do
   return x
 
 main = do
-  scores <- readLn
-  weights <- readLn
-  let m = fromIntegral $ length weights
+  setStdGen (mkStdGen 50)
+  scores <- readLn :: IO [Int]
+  m <- readLn :: IO Int
+  weights <- replicateM m $ randomRIO (1, 2^m)
   let r = fromIntegral $ length scores
-  let result = satisfiability $ buildInstance Clasp (weightedApproval m r scores weights)
+  let inst = buildInstance Clasp (weightedApproval (fromIntegral m) r (map fromIntegral scores) weights)
+  let result = satisfiability inst
+  print scores
+  print m
+  print weights
   print result
+  putStrLn $ "Conflicts: " ++ fromJust (lookup "Conflicts" (head $ comments inst))
   return ()

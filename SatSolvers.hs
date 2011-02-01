@@ -22,7 +22,7 @@ import System.Exit
 import System.IO
 import System.Process
 import Test.QuickCheck
-import Text.Regex.Posix
+import Text.Regex.PCRE
 import qualified Data.IntMap as IM
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -32,7 +32,7 @@ import Tracing
 solversHome = "./sat/"
 
 type Model = IM.IntMap Bool
-type SolverComments = M.Map String String
+type SolverComments = [(String, String)]
 
 -- Solve a formula, and return (the satisfiability status, Maybe list
 -- of Models containing the truth assignments of the variables,
@@ -234,6 +234,8 @@ claspParse (stdout, assignmentFile) =
     let assignmentLines = filter ((=="v") . take 1) (lines stdout)
         assignmentStrings = concatMap (tail . words) assignmentLines
         assignments = map read assignmentStrings
+        comments = filter (\(_,_,_,groups) -> length groups == 2) $ (map (=~"c (.*?)\\s*: (.*)") (lines stdout) :: [(String, String, String, [String])])
+        commentAssoc = map (\ (_,_,_,[k, a]) -> (k, a)) comments
         (trues, falses) = second (map abs) $ partition (>0) assignments
         sat = case stdout of
                 _ | stdout =~ "UNSATISFIABLE" -> Just False
@@ -244,5 +246,5 @@ claspParse (stdout, assignmentFile) =
                            [(var, True) | var <- trues] ++
                            [(var, False) | var <- falses]
                _ -> Nothing,
-       M.empty -- TODO parse out the comments and return them in a map
+               commentAssoc
        )

@@ -5,6 +5,7 @@ import NPLib
 import NInteger
 import Control.Monad
 import Data.Array
+import Data.Maybe
 
 --unweightedBorda :: Integer -> Integer -> [Integer] -> InstanceBuilder ()
 unweightedBorda m startingScores = do
@@ -33,7 +34,9 @@ main = do
   let m = 2
   let scores = [0,5,5,5,9,9,9]
   let r = fromIntegral $ length scores
-  let result = satisfiability $ buildInstance Clasp (unweightedBorda m scores)
+  let inst = buildInstance Clasp (unweightedBorda m scores)
+  let result = satisfiability inst
   print result
+  putStrLn $ "Conflicts: " ++ fromJust (lookup "Conflicts" (head $ comments inst))
   --forM_ (range ((0,2,2),(m,r,r))) $ \(i1,i2,i3) -> when (x ! (i1,i2,i3)) (putStrLn (show i1 ++ " manipulators put " ++ show i2 ++ " in position " ++ show i3))
   return ()
